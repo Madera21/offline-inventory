@@ -50,8 +50,8 @@ export default function DashboardScreen() {
           onPress={() => router.push('/products/new')}
           activeOpacity={0.8}
         >
-          <Ionicons name="add-circle" size={28} color="#2563EB" />
-          <Text style={[styles.actionTitle, { color: '#1E40AF' }]}>Add Product</Text>
+          <Ionicons name="add-circle" size={26} color="#2563EB" />
+          <Text style={[styles.actionTitle, { color: '#1E40AF' }]}>Add Item</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -59,8 +59,17 @@ export default function DashboardScreen() {
           onPress={() => router.push('/(tabs)/sell')}
           activeOpacity={0.8}
         >
-          <Ionicons name="cart" size={28} color="#16A34A" />
+          <Ionicons name="cart" size={26} color="#16A34A" />
           <Text style={[styles.actionTitle, { color: '#166534' }]}>Quick Sale</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionCard, { backgroundColor: '#FEF3C7' }]}
+          onPress={() => router.push('/stock/adjust')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="swap-vertical" size={26} color="#D97706" />
+          <Text style={[styles.actionTitle, { color: '#92400E' }]}>Restock</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -68,7 +77,7 @@ export default function DashboardScreen() {
           onPress={() => router.push('/categories')}
           activeOpacity={0.8}
         >
-          <Ionicons name="folder-open" size={28} color="#9333EA" />
+          <Ionicons name="folder-open" size={26} color="#9333EA" />
           <Text style={[styles.actionTitle, { color: '#6B21A8' }]}>Categories</Text>
         </TouchableOpacity>
       </View>

@@ -1,23 +1,32 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { stockRepository } from '../../src/db/repositories/stock.repository';
-import { StockMovement } from '../../src/types';
+import { salesService } from '../../src/services/sales.service';
+import { StockMovement, Sale } from '../../src/types';
 import { formatDateTime } from '../../src/utils/dates';
+import { MoneyText } from '../../src/components/MoneyText';
 import { EmptyState } from '../../src/components/EmptyState';
 
 export default function HistoryTabScreen() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'SALES' | 'MOVEMENTS'>('SALES');
+  const [sales, setSales] = useState<Sale[]>([]);
   const [movements, setMovements] = useState<(StockMovement & { product_name: string; variant_label: string })[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadMovements = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const data = await stockRepository.getAllMovements(100);
-      setMovements(data);
+      const [salesData, movementsData] = await Promise.all([
+        salesService.getAllSales(100),
+        stockRepository.getAllMovements(100),
+      ]);
+      setSales(salesData);
+      setMovements(movementsData);
     } catch (err) {
-      console.error('Failed to load stock movements:', err);
+      console.error('Failed to load history data:', err);
     } finally {
       setLoading(false);
     }
@@ -25,13 +34,13 @@ export default function HistoryTabScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadMovements();
-    }, [loadMovements])
+      loadData();
+    }, [loadData])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMovements();
+    await loadData();
     setRefreshing(false);
   };
 
@@ -42,43 +51,113 @@ export default function HistoryTabScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={movements}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const icon = getMovementIcon(item.movement_type, item.quantity_delta);
-          const isPositive = item.quantity_delta > 0;
-          return (
-            <View style={styles.movementItem}>
-              <Ionicons name={icon.name} size={28} color={icon.color} style={styles.icon} />
-              <View style={styles.itemDetails}>
-                <Text style={styles.productName}>{item.product_name}</Text>
-                <Text style={styles.variantLabel}>
-                  {item.variant_label} • {item.movement_type.replace('_', ' ')}
-                </Text>
-                {item.reason && <Text style={styles.reasonText}>Reason: {item.reason}</Text>}
-                <Text style={styles.timestamp}>{formatDateTime(item.occurred_at)}</Text>
+      {/* Top Segmented Filter */}
+      <View style={styles.segmentedContainer}>
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, activeTab === 'SALES' && styles.segmentBtnActive]}
+            onPress={() => setActiveTab('SALES')}
+          >
+            <Text style={[styles.segmentText, activeTab === 'SALES' && styles.segmentTextActive]}>
+              Sales Receipts ({sales.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentBtn, activeTab === 'MOVEMENTS' && styles.segmentBtnActive]}
+            onPress={() => setActiveTab('MOVEMENTS')}
+          >
+            <Text style={[styles.segmentText, activeTab === 'MOVEMENTS' && styles.segmentTextActive]}>
+              Stock Movements ({movements.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Sales List */}
+      {activeTab === 'SALES' ? (
+        <FlatList
+          data={sales}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const isVoided = item.status === 'VOIDED';
+            return (
+              <TouchableOpacity
+                style={[styles.saleCard, isVoided && styles.saleCardVoided]}
+                onPress={() => router.push(`/sales/${item.id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.saleHeader}>
+                  <Text style={styles.receiptNumber}>{item.receipt_number}</Text>
+                  <MoneyText amountMinor={item.total_minor} style={styles.saleTotal} />
+                </View>
+
+                <View style={styles.saleFooter}>
+                  <Text style={styles.saleMeta}>
+                    {formatDateTime(item.sold_at)} • {item.payment_method}
+                  </Text>
+                  <View style={[styles.saleBadge, isVoided ? styles.badgeVoided : styles.badgeCompleted]}>
+                    <Text style={[styles.badgeText, isVoided ? styles.badgeTextVoided : styles.badgeTextCompleted]}>
+                      {item.status}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            !loading ? (
+              <EmptyState
+                icon="receipt-outline"
+                title="No Sales Recorded Yet"
+                description="Completed transactions from Quick Sale will appear here."
+                actionLabel="Make a Sale"
+                onAction={() => router.push('/(tabs)/sell')}
+              />
+            ) : undefined
+          }
+        />
+      ) : (
+        /* Stock Movements List */
+        <FlatList
+          data={movements}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const icon = getMovementIcon(item.movement_type, item.quantity_delta);
+            const isPositive = item.quantity_delta > 0;
+            return (
+              <View style={styles.movementItem}>
+                <Ionicons name={icon.name} size={28} color={icon.color} style={styles.icon} />
+                <View style={styles.itemDetails}>
+                  <Text style={styles.productName}>{item.product_name}</Text>
+                  <Text style={styles.variantLabel}>
+                    {item.variant_label} • {item.movement_type.replace('_', ' ')}
+                  </Text>
+                  {item.reason && <Text style={styles.reasonText}>Note: {item.reason}</Text>}
+                  <Text style={styles.timestamp}>{formatDateTime(item.occurred_at)}</Text>
+                </View>
+                <View style={styles.deltaContainer}>
+                  <Text style={[styles.deltaText, isPositive ? styles.deltaPositive : styles.deltaNegative]}>
+                    {isPositive ? `+${item.quantity_delta}` : item.quantity_delta}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.deltaContainer}>
-                <Text style={[styles.deltaText, isPositive ? styles.deltaPositive : styles.deltaNegative]}>
-                  {isPositive ? `+${item.quantity_delta}` : item.quantity_delta}
-                </Text>
-              </View>
-            </View>
-          );
-        }}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          !loading ? (
-            <EmptyState
-              icon="time-outline"
-              title="No Movement History"
-              description="Stock adjustments, initial counts, sales, and returns will appear here in chronological order."
-            />
-          ) : undefined
-        }
-      />
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            !loading ? (
+              <EmptyState
+                icon="time-outline"
+                title="No Stock Movements"
+                description="Stock adjustments, initial counts, sales, and returns will appear here."
+              />
+            ) : undefined
+          }
+        />
+      )}
     </View>
   );
 }
@@ -88,9 +167,104 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  segmentedContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 3,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  segmentBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  segmentTextActive: {
+    color: '#0F172A',
+  },
   listContent: {
     padding: 16,
+    paddingBottom: 40,
   },
+  saleCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  saleCardVoided: {
+    backgroundColor: '#FFF5F5',
+    borderColor: '#FED7D7',
+  },
+  saleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  receiptNumber: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  saleTotal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  saleFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saleMeta: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  saleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeCompleted: {
+    backgroundColor: '#DCFCE7',
+  },
+  badgeTextCompleted: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  badgeVoided: {
+    backgroundColor: '#FEE2E2',
+  },
+  badgeTextVoided: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B91C1C',
+  },
+  badgeText: {},
   movementItem: {
     flexDirection: 'row',
     alignItems: 'center',

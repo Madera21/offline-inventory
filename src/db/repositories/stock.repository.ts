@@ -127,6 +127,43 @@ export class StockRepository {
 
     return computedBalance;
   }
+
+  /**
+   * Complete inventory reconciliation audit across all variants.
+   */
+  async reconcileAllVariants(): Promise<{ totalChecked: number; discrepanciesFixed: number }> {
+    const db = await getDatabase();
+    const variants = await db.getAllAsync<{ id: string; stock_quantity: number }>(
+      'SELECT id, stock_quantity FROM product_variants;'
+    );
+
+    let discrepanciesFixed = 0;
+    const now = getCurrentIsoTimestamp();
+
+    await db.withTransactionAsync(async () => {
+      for (const v of variants) {
+        const result = await db.getFirstAsync<{ total: number | null }>(
+          'SELECT SUM(quantity_delta) as total FROM stock_movements WHERE variant_id = ?;',
+          [v.id]
+        );
+        const ledgerTotal = result?.total ?? 0;
+        if (ledgerTotal !== v.stock_quantity) {
+          discrepanciesFixed++;
+          await db.runAsync(
+            `UPDATE product_variants
+             SET stock_quantity = ?, updated_at = ?
+             WHERE id = ?;`,
+            [ledgerTotal, now, v.id]
+          );
+        }
+      }
+    });
+
+    return {
+      totalChecked: variants.length,
+      discrepanciesFixed,
+    };
+  }
 }
 
 export const stockRepository = new StockRepository();

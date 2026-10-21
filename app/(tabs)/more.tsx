@@ -24,13 +24,57 @@ export default function MoreScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/stock/adjust')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="swap-vertical-outline" size={20} color="#D97706" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Stock Adjustment</Text>
+            <Text style={styles.menuSubtitle}>Record restocking, damage, or audit count</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Diagnostics & Integrity</Text>
+      <View style={styles.menuGroup}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={async () => {
+            try {
+              const { stockRepository } = await import('../../src/db/repositories/stock.repository');
+              const res = await stockRepository.reconcileAllVariants();
+              Alert.alert(
+                'Reconciliation Audit Complete',
+                `Audited ${res.totalChecked} variant(s).\n${res.discrepanciesFixed === 0 ? 'All stored quantities perfectly match the movement ledger.' : `Repaired ${res.discrepanciesFixed} discrepancy(ies).`}`
+              );
+            } catch (err: any) {
+              Alert.alert('Audit Error', err?.message || 'Failed to reconcile stock.');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#F0FDF4' }]}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#16A34A" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Reconcile Stock Ledger</Text>
+            <Text style={styles.menuSubtitle}>Audit stored balances against transaction movements</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>Reports & Data</Text>
       <View style={styles.menuGroup}>
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => Alert.alert('Reports', 'Reporting module will be available in Phase 4.')}
+          onPress={() => router.push('/reports')}
           activeOpacity={0.7}
         >
           <View style={[styles.menuIcon, { backgroundColor: '#F0FDF4' }]}>
@@ -38,14 +82,14 @@ export default function MoreScreen() {
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Sales & Inventory Reports</Text>
-            <Text style={styles.menuSubtitle}>Daily sales, gross profit, and valuation</Text>
+            <Text style={styles.menuSubtitle}>Daily sales, gross profit, valuation & CSV export</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.menuItem}
-          onPress={() => Alert.alert('Backup & Restore', 'Full offline ZIP backup and restore will be available in Phase 5.')}
+          onPress={() => router.push('/backup')}
           activeOpacity={0.7}
         >
           <View style={[styles.menuIcon, { backgroundColor: '#FAF5FF' }]}>
@@ -53,7 +97,7 @@ export default function MoreScreen() {
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Backup & Restore</Text>
-            <Text style={styles.menuSubtitle}>Export complete archive or CSV reports</Text>
+            <Text style={styles.menuSubtitle}>Complete offline backup archive & CSV exports</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
@@ -63,7 +107,7 @@ export default function MoreScreen() {
       <View style={styles.card}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>App Version</Text>
-          <Text style={styles.infoValue}>1.0.0 (Phase 1: Foundation)</Text>
+          <Text style={styles.infoValue}>1.0.0 (Universal Offline Core)</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Architecture</Text>
