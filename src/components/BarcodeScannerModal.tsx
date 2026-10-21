@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
-  Platform,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ interface BarcodeScannerModalProps {
   onClose: () => void;
   onScan: (data: string) => void;
   title?: string;
-  continuous?: boolean;
+  enableContinuousToggle?: boolean;
 }
 
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
@@ -26,34 +26,76 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   onClose,
   onScan,
   title = 'Scan Barcode',
-  continuous = false,
+  enableContinuousToggle = true,
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
-  const [scanned, setScanned] = useState(false);
+  const [continuous, setContinuous] = useState(false);
   const [manualMode, setManualMode] = useState(false);
   const [manualCode, setManualCode] = useState('');
+  const [lastScannedFeedback, setLastScannedFeedback] = useState<string | null>(null);
+
+  // Synchronous lock refs to prevent 60fps callback spamming
+  const isLocked = useRef(false);
+  const lastScannedCode = useRef<string | null>(null);
+  const lastScanTime = useRef<number>(0);
+
+  // Reset locks whenever modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      isLocked.current = false;
+      lastScannedCode.current = null;
+      lastScanTime.current = 0;
+      setLastScannedFeedback(null);
+      setManualMode(false);
+    }
+  }, [visible]);
 
   const handleBarcodeScanned = (result: BarcodeScanningResult) => {
-    if (scanned && !continuous) return;
+    const rawData = result.data?.trim();
+    if (!rawData) return;
 
-    const data = result.data?.trim();
-    if (!data) return;
+    const now = Date.now();
 
-    setScanned(true);
-    onScan(data);
+    // 1. Strict synchronous lock: if locked, reject immediately
+    if (isLocked.current) {
+      return;
+    }
+
+    // 2. Cooldown check:
+    // If continuous mode, prevent rescanning the SAME barcode within 2.5s, or ANY code within 1.2s
+    if (continuous) {
+      if (rawData === lastScannedCode.current && now - lastScanTime.current < 2500) {
+        return;
+      }
+      if (now - lastScanTime.current < 1200) {
+        return;
+      }
+    }
+
+    // 3. Lock immediately
+    isLocked.current = true;
+    lastScannedCode.current = rawData;
+    lastScanTime.current = now;
+
+    // Show on-screen feedback badge inside camera
+    setLastScannedFeedback(rawData);
+
+    // Trigger parent callback
+    onScan(rawData);
 
     if (continuous) {
-      // Re-enable scanning after 1.5 seconds in continuous mode
+      // Re-enable scanning after 1.8 seconds in continuous mode
       setTimeout(() => {
-        setScanned(false);
-      }, 1500);
+        isLocked.current = false;
+        setLastScannedFeedback(null);
+      }, 1800);
     } else {
-      // Reset and close
+      // Single scan mode: close modal after brief visual confirmation (250ms)
       setTimeout(() => {
-        setScanned(false);
+        isLocked.current = false;
         onClose();
-      }, 300);
+      }, 250);
     }
   };
 
@@ -88,21 +130,44 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           >
             <Ionicons
               name={torch ? 'flashlight' : 'flashlight-outline'}
-              size={24}
+              size={22}
               color={torch ? '#FBBF24' : '#FFFFFF'}
             />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>{title}</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{title}</Text>
+          </View>
 
           <TouchableOpacity
             style={styles.headerButton}
             onPress={onClose}
             activeOpacity={0.7}
           >
-            <Ionicons name="close" size={26} color="#FFFFFF" />
+            <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
+
+        {/* Secondary Subheader Toolbar for Continuous Toggle */}
+        {enableContinuousToggle && (
+          <View style={styles.subToolbar}>
+            <TouchableOpacity
+              style={[styles.togglePill, continuous && styles.togglePillActive]}
+              onPress={() => setContinuous((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={continuous ? 'repeat' : 'scan-outline'}
+                size={16}
+                color={continuous ? '#FFFFFF' : '#94A3B8'}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.togglePillText, continuous && styles.togglePillTextActive]}>
+                {continuous ? 'Continuous Scanning: ON' : 'Single Scan Mode'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Camera or Permission Content */}
         {!permission?.granted ? (
@@ -139,7 +204,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   'codabar',
                 ],
               }}
-              onBarcodeScanned={scanned && !continuous ? undefined : handleBarcodeScanned}
+              onBarcodeScanned={isLocked.current ? undefined : handleBarcodeScanned}
             />
 
             {/* Viewfinder Target Overlay */}
@@ -149,17 +214,24 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <View style={styles.unfocusedContainer} />
                 <View style={styles.focusedTarget}>
                   {/* Target Corners */}
-                  <View style={[styles.corner, styles.topLeft]} />
-                  <View style={[styles.corner, styles.topRight]} />
-                  <View style={[styles.corner, styles.bottomLeft]} />
-                  <View style={[styles.corner, styles.bottomRight]} />
+                  <View style={[styles.corner, styles.topLeft, lastScannedFeedback && styles.cornerSuccess]} />
+                  <View style={[styles.corner, styles.topRight, lastScannedFeedback && styles.cornerSuccess]} />
+                  <View style={[styles.corner, styles.bottomLeft, lastScannedFeedback && styles.cornerSuccess]} />
+                  <View style={[styles.corner, styles.bottomRight, lastScannedFeedback && styles.cornerSuccess]} />
                   {/* Laser Line */}
-                  <View style={styles.laserLine} />
+                  <View style={[styles.laserLine, lastScannedFeedback && styles.laserLineSuccess]} />
                 </View>
                 <View style={styles.unfocusedContainer} />
               </View>
               <View style={styles.unfocusedContainer}>
-                <Text style={styles.hintText}>Align barcode inside frame to scan</Text>
+                {lastScannedFeedback ? (
+                  <View style={styles.scannedBadge}>
+                    <Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginRight: 6 }} />
+                    <Text style={styles.scannedBadgeText}>Scanned: {lastScannedFeedback}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.hintText}>Align barcode inside frame to scan</Text>
+                )}
               </View>
             </View>
           </View>
@@ -220,19 +292,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: '#0F172A',
     zIndex: 10,
   },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   headerButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  subToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  togglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  togglePillActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#38BDF8',
+  },
+  togglePillText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  togglePillTextActive: {
+    color: '#FFFFFF',
   },
   cameraWrapper: {
     flex: 1,
@@ -254,11 +360,11 @@ const styles = StyleSheet.create({
   },
   middleRow: {
     flexDirection: 'row',
-    height: 240,
+    height: 220,
   },
   focusedTarget: {
     width: 280,
-    height: 240,
+    height: 220,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -268,6 +374,9 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderColor: '#38BDF8',
+  },
+  cornerSuccess: {
+    borderColor: '#10B981',
   },
   topLeft: {
     top: 0,
@@ -301,10 +410,10 @@ const styles = StyleSheet.create({
     width: '90%',
     height: 2,
     backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 5,
+  },
+  laserLineSuccess: {
+    backgroundColor: '#10B981',
+    height: 3,
   },
   hintText: {
     color: '#E2E8F0',
@@ -312,6 +421,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 20,
     textAlign: 'center',
+  },
+  scannedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    marginTop: 16,
+  },
+  scannedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   permissionContainer: {
     flex: 1,

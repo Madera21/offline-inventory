@@ -65,9 +65,8 @@ export default function QuickSaleScreen() {
           unit_cost_minor: variant.cost_minor,
           max_available_stock: variant.stock_quantity,
         });
-
-        Alert.alert('Added to Cart', `1x "${product.name}" (${variant.label}) added to cart.`);
       } else {
+        setScannerOpen(false);
         Alert.alert(
           'Barcode Not Found',
           `No item matches barcode "${code}". Would you like to create a new product with this barcode?`,
@@ -530,7 +529,6 @@ export default function QuickSaleScreen() {
         onClose={() => setScannerOpen(false)}
         onScan={handleBarcodeScanned}
         title="Scan Product to Add"
-        continuous={true}
       />
     </View>
   );
