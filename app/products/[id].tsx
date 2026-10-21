@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
   Modal,
   TextInput,
@@ -22,6 +21,10 @@ import { MoneyText } from '../../src/components/MoneyText';
 import { StockBadge } from '../../src/components/StockBadge';
 import { formatDateTime } from '../../src/utils/dates';
 import { parseMoneyToMinor } from '../../src/utils/currency';
+import { FramedProductImage } from '../../src/components/FramedProductImage';
+import { ImageFrameEditor } from '../../src/components/ImageFrameEditor';
+import { readImageFrame } from '../../src/utils/imageFrame';
+import { StockReasonPicker, MANUAL_STOCK_REASON } from '../../src/components/StockReasonPicker';
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,6 +33,7 @@ export default function ProductDetailsScreen() {
   const [product, setProduct] = useState<ProductWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [editingFrame, setEditingFrame] = useState(false);
 
   // Stock adjust modal
   const [adjustModalVisible, setAdjustModalVisible] = useState(false);
@@ -37,6 +41,7 @@ export default function ProductDetailsScreen() {
   const [adjustType, setAdjustType] = useState<StockMovementType>('RESTOCK');
   const [adjustQuantity, setAdjustQuantity] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
 
   // Add variant modal
   const [variantModalVisible, setVariantModalVisible] = useState(false);
@@ -75,11 +80,17 @@ export default function ProductDetailsScreen() {
     setAdjustType('RESTOCK');
     setAdjustQuantity('');
     setAdjustReason('');
+    setSelectedReason(null);
     setAdjustModalVisible(true);
   };
 
   const handleSaveAdjust = async () => {
     if (!selectedVariant) return;
+    const reason = selectedReason === MANUAL_STOCK_REASON ? adjustReason.trim() : selectedReason;
+    if (!reason) {
+      Alert.alert('Reason Required', selectedReason === MANUAL_STOCK_REASON ? 'Please write your reason.' : 'Please select a reason for this stock movement.');
+      return;
+    }
     const qty = parseInt(adjustQuantity, 10);
     if (isNaN(qty) || qty <= 0) {
       Alert.alert('Validation Error', 'Please enter a valid positive quantity.');
@@ -94,7 +105,7 @@ export default function ProductDetailsScreen() {
         variantId: selectedVariant.id,
         movementType: adjustType,
         quantityDelta: delta,
-        reason: adjustReason.trim() || null,
+        reason,
       });
 
       setAdjustModalVisible(false);
@@ -191,7 +202,16 @@ export default function ProductDetailsScreen() {
       {/* Product Hero */}
       <View style={styles.heroCard}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.heroImage} resizeMode="cover" />
+          <View>
+            <FramedProductImage uri={imageUri} frame={readImageFrame(product.images[0]?.frame_json)} style={styles.heroImage} />
+            <TouchableOpacity onPress={() => setEditingFrame(true)} style={{ padding: 12 }}>
+              <Text style={{ color: '#2563EB', fontWeight: '600' }}>Edit Framing</Text>
+            </TouchableOpacity>
+            {editingFrame && <ImageFrameEditor uri={imageUri} initialFrame={readImageFrame(product.images[0]?.frame_json)} onClose={() => setEditingFrame(false)} onSave={async (frame) => {
+              await productsRepository.updateImageFrame(product.images[0].id, JSON.stringify(frame));
+              await loadProduct();
+            }} />}
+          </View>
         ) : (
           <View style={styles.placeholderHero}>
             <Ionicons name="cube-outline" size={48} color="#94A3B8" />
@@ -359,7 +379,13 @@ export default function ProductDetailsScreen() {
                 <TouchableOpacity
                   key={t}
                   style={[styles.typeButton, adjustType === t && styles.typeButtonActive]}
-                  onPress={() => setAdjustType(t)}
+                  onPress={() => {
+                    if (adjustType !== t) {
+                      setAdjustType(t);
+                      setSelectedReason(null);
+                      setAdjustReason('');
+                    }
+                  }}
                 >
                   <Text style={[styles.typeButtonText, adjustType === t && styles.typeButtonTextActive]}>
                     {t}
@@ -378,13 +404,13 @@ export default function ProductDetailsScreen() {
               onChangeText={setAdjustQuantity}
             />
 
-            <Text style={styles.modalLabel}>Reason / Remarks</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. Received new shipment from supplier"
-              placeholderTextColor="#94A3B8"
-              value={adjustReason}
-              onChangeText={setAdjustReason}
+            <Text style={styles.modalLabel}>Reason *</Text>
+            <StockReasonPicker
+              movementType={adjustType}
+              selectedReason={selectedReason}
+              manualReason={adjustReason}
+              onSelect={setSelectedReason}
+              onManualChange={setAdjustReason}
             />
 
             <View style={styles.modalButtons}>

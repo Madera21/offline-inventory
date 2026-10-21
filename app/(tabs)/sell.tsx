@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   Modal,
   ScrollView,
   TextInput,
@@ -24,6 +23,8 @@ import { StockBadge } from '../../src/components/StockBadge';
 import { resolveImageUri } from '../../src/services/image.service';
 import { parseMoneyToMinor, formatMoney } from '../../src/utils/currency';
 import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
+import { FramedProductImage } from '../../src/components/FramedProductImage';
+import { readImageFrame } from '../../src/utils/imageFrame';
 import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 
 export default function QuickSaleScreen() {
@@ -72,7 +73,7 @@ export default function QuickSaleScreen() {
         if (online) {
           Alert.alert(
             'Product Identified Online!',
-            `"${online.name}" (${online.brand || 'No brand'})\n\nWould you like to add it to inventory with all online configs & photo?`,
+            `"${online.name}" (${online.brand || 'No brand'})\n\nAdd this product to inventory with its online details? You can choose the photo before saving.`,
             [
               { text: 'Cancel', style: 'cancel' },
               {
@@ -265,7 +266,7 @@ export default function QuickSaleScreen() {
             >
               <View style={styles.imageBox}>
                 {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={styles.productImage} />
+                  <FramedProductImage uri={imageUri} frame={readImageFrame(item.images[0]?.frame_json)} style={styles.productImage} />
                 ) : (
                   <Ionicons name="cube-outline" size={32} color="#94A3B8" />
                 )}

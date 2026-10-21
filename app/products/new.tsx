@@ -6,14 +6,13 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { categoriesRepository } from '../../src/db/repositories/categories.repository';
-import { productsRepository } from '../../src/db/repositories/products.repository';
+import { productsRepository, DuplicateBarcodeError } from '../../src/db/repositories/products.repository';
 import {
   pickImageFromGallery,
   captureImageWithCamera,
@@ -25,6 +24,9 @@ import { parseMoneyToMinor } from '../../src/utils/currency';
 import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 import { downloadAndSaveRemoteImage } from '../../src/services/image.service';
 import { Category } from '../../src/types';
+import { FramedProductImage } from '../../src/components/FramedProductImage';
+import { ImageFrameEditor } from '../../src/components/ImageFrameEditor';
+import { DEFAULT_IMAGE_FRAME } from '../../src/utils/imageFrame';
 
 export default function NewProductScreen() {
   const router = useRouter();
@@ -48,10 +50,34 @@ export default function NewProductScreen() {
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [imageRelativePath, setImageRelativePath] = useState<string | null>(null);
+  const [downloadingImage, setDownloadingImage] = useState(false);
+  const [imageFrame, setImageFrame] = useState(DEFAULT_IMAGE_FRAME);
+  const [editingFrame, setEditingFrame] = useState(false);
+  const photoRevision = React.useRef(0);
+  const replacePhoto = (path: string | null) => {
+    photoRevision.current++;
+    setImageRelativePath(path);
+    setImageFrame(DEFAULT_IMAGE_FRAME);
+  };
 
   // Scanner & image analysis state
   const [scannerOpen, setScannerOpen] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
+  const saveInProgress = React.useRef(false);
+
+  const showExistingProduct = (productId: string, message: string) => {
+    Alert.alert('Product Already Exists', message, [
+      { text: 'Keep Editing', style: 'cancel' },
+      { text: 'Open Product', onPress: () => router.replace(`/products/${productId}`) },
+    ]);
+  };
+
+  const checkExistingBarcode = async (code: string): Promise<boolean> => {
+    const existing = await productsRepository.findExistingBarcode(code);
+    if (!existing) return false;
+    showExistingProduct(existing.product_id, `This barcode already belongs to "${existing.product_name}". Open it to edit the product or add stock.`);
+    return true;
+  };
 
   useEffect(() => {
     async function loadCats() {
@@ -73,7 +99,9 @@ export default function NewProductScreen() {
     }
 
     setLookingUpOnline(true);
+    const revision = photoRevision.current;
     try {
+      if (await checkExistingBarcode(code)) return;
       const result = await lookupProductByBarcodeOnline(code);
       if (result) {
         setName(result.name);
@@ -100,16 +128,15 @@ export default function NewProductScreen() {
         }
 
         if (result.imageUrl && !imageRelativePath) {
-          const localImg = await downloadAndSaveRemoteImage(result.imageUrl);
-          if (localImg) {
-            setImageRelativePath(localImg);
-          }
+          setDownloadingImage(true);
+          const path = await downloadAndSaveRemoteImage(result.imageUrl);
+          if (path && revision === photoRevision.current) replacePhoto(path);
         }
 
         Alert.alert(
           'Product Identified Online!',
-          `Found "${result.name}" on ${result.source}.\n\nProduct details and image have been automatically filled.`,
-          [{ text: 'Awesome!' }]
+          `Found "${result.name}" on ${result.source}.\n\nReview the product details and photo. Use Edit Framing to adjust the visible area, or Change Photo to choose your own.`,
+          [{ text: 'Review Product' }]
         );
       } else {
         Alert.alert(
@@ -121,6 +148,7 @@ export default function NewProductScreen() {
       Alert.alert('Online Lookup', err?.message || 'Failed to lookup product online.');
     } finally {
       setLookingUpOnline(false);
+      setDownloadingImage(false);
     }
   };
 
@@ -162,7 +190,7 @@ export default function NewProductScreen() {
           try {
             const path = await captureImageWithCamera();
             if (path) {
-              setImageRelativePath(path);
+              replacePhoto(path);
               checkImageForBarcode(path);
             }
           } catch (err: any) {
@@ -176,7 +204,7 @@ export default function NewProductScreen() {
           try {
             const path = await pickImageFromGallery();
             if (path) {
-              setImageRelativePath(path);
+              replacePhoto(path);
               checkImageForBarcode(path);
             }
           } catch (err: any) {
@@ -189,6 +217,7 @@ export default function NewProductScreen() {
   };
 
   const handleSave = async () => {
+    if (downloadingImage || lookingUpOnline || loading || saveInProgress.current) return;
     if (!name.trim()) {
       Alert.alert('Validation Error', 'Product name is required.');
       return;
@@ -204,6 +233,7 @@ export default function NewProductScreen() {
     const initialStock = parseInt(openingStock, 10) || 0;
     const lowStock = lowStockThreshold.trim() ? parseInt(lowStockThreshold, 10) : null;
 
+    saveInProgress.current = true;
     setLoading(true);
     try {
       await productsRepository.create({
@@ -220,13 +250,19 @@ export default function NewProductScreen() {
         barcode: barcode.trim() || null,
         low_stock_threshold: lowStock,
         image_relative_paths: imageRelativePath ? [imageRelativePath] : [],
+        image_frame_json: JSON.stringify(imageFrame),
       });
 
       router.back();
     } catch (err: any) {
-      console.error('Error creating product:', err);
-      Alert.alert('Save Error', err?.message || 'Failed to create product.');
+      if (err instanceof DuplicateBarcodeError) {
+        showExistingProduct(err.productId, err.message);
+      } else {
+        console.error('Error creating product:', err);
+        Alert.alert('Save Error', err?.message || 'Failed to create product.');
+      }
     } finally {
+      saveInProgress.current = false;
       setLoading(false);
     }
   };
@@ -240,10 +276,12 @@ export default function NewProductScreen() {
         <View style={styles.imageSection}>
           {previewUri ? (
             <View style={styles.imagePreviewContainer}>
-              <Image source={{ uri: previewUri }} style={styles.imagePreview} />
+              <FramedProductImage uri={previewUri} frame={imageFrame} style={styles.imagePreview} />
               <TouchableOpacity
                 style={styles.removeImageBtn}
-                onPress={() => setImageRelativePath(null)}
+                accessibilityLabel="Remove product photo"
+                disabled={downloadingImage || loading}
+                onPress={() => replacePhoto(null)}
               >
                 <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
               </TouchableOpacity>
@@ -255,11 +293,30 @@ export default function NewProductScreen() {
               )}
             </View>
           ) : (
-            <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto}>
+            <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto} disabled={downloadingImage || loading}>
               <Ionicons name="camera-outline" size={32} color="#64748B" />
               <Text style={styles.photoPlaceholderText}>Add Product Photo</Text>
             </TouchableOpacity>
           )}
+          {previewUri && (
+            <TouchableOpacity style={styles.autoFillBtn} onPress={handlePickPhoto} disabled={downloadingImage || loading}>
+              <Text style={styles.autoFillBtnText}>Change Photo</Text>
+            </TouchableOpacity>
+          )}
+          {previewUri && (
+            <TouchableOpacity
+              style={styles.autoFillBtn}
+              onPress={() => setEditingFrame(true)}
+              disabled={downloadingImage || lookingUpOnline || loading}
+            >
+              {downloadingImage ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.autoFillBtnText}>Edit Framing</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {previewUri && editingFrame && <ImageFrameEditor uri={previewUri} initialFrame={imageFrame} onClose={() => setEditingFrame(false)} onSave={setImageFrame} />}
         </View>
 
         {/* Basic Info */}
@@ -424,7 +481,7 @@ export default function NewProductScreen() {
               <TouchableOpacity
                 style={[styles.autoFillBtn, lookingUpOnline && styles.autoFillBtnDisabled]}
                 onPress={() => handleOnlineLookup()}
-                disabled={lookingUpOnline}
+                disabled={lookingUpOnline || downloadingImage || loading}
                 activeOpacity={0.8}
               >
                 {lookingUpOnline ? (
@@ -470,9 +527,9 @@ export default function NewProductScreen() {
 
         {/* Submit Button */}
         <TouchableOpacity
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          style={[styles.saveButton, (loading || lookingUpOnline || downloadingImage) && styles.saveButtonDisabled]}
           onPress={handleSave}
-          disabled={loading}
+          disabled={loading || lookingUpOnline || downloadingImage}
           activeOpacity={0.8}
         >
           {loading ? (
@@ -487,8 +544,15 @@ export default function NewProductScreen() {
       <BarcodeScannerModal
         visible={scannerOpen}
         onClose={() => setScannerOpen(false)}
-        onScan={(scannedCode) => {
+        onScan={async (scannedCode) => {
           setBarcode(scannedCode);
+          setScannerOpen(false);
+          try {
+            if (await checkExistingBarcode(scannedCode)) return;
+          } catch {
+            Alert.alert('Lookup Failed', 'Could not check the local catalog. Please try scanning again.');
+            return;
+          }
           Alert.alert(
             'Barcode Scanned!',
             `Barcode: ${scannedCode}\n\nIdentify and auto-fill product details from the internet?`,

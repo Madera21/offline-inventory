@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDatabase } from '../db/database';
-import { CURRENT_SCHEMA_VERSION } from '../db/schema';
+import { CURRENT_SCHEMA_VERSION, MIGRATION_V3 } from '../db/schema';
 import { getCurrentIsoTimestamp } from '../utils/dates';
 import { ensureImagesDirectoryExists } from './image.service';
 
@@ -147,6 +147,8 @@ export class BackupService {
 
     // 2. Execute full transactional replacement
     await db.withTransactionAsync(async () => {
+      // Preserve legacy backups containing duplicates. Trigger changes roll back if restore fails.
+      await db.execAsync('DROP TRIGGER IF EXISTS prevent_duplicate_barcode_insert; DROP TRIGGER IF EXISTS prevent_duplicate_barcode_update;');
       // Clear existing tables in safe order
       await db.execAsync(`
         DELETE FROM sale_items;
@@ -207,8 +209,8 @@ export class BackupService {
       if (payload.data.product_images) {
         for (const img of payload.data.product_images) {
           await db.runAsync(
-            'INSERT INTO product_images (id, product_id, relative_path, sort_order, created_at) VALUES (?, ?, ?, ?, ?);',
-            [img.id, img.product_id, img.relative_path, img.sort_order, img.created_at]
+            'INSERT INTO product_images (id, product_id, relative_path, sort_order, created_at, frame_json) VALUES (?, ?, ?, ?, ?, ?);',
+            [img.id, img.product_id, img.relative_path, img.sort_order, img.created_at, img.frame_json ?? null]
           );
         }
       }
@@ -236,6 +238,7 @@ export class BackupService {
           [sm.id, sm.variant_id, sm.movement_type, sm.quantity_delta, sm.reason, sm.occurred_at, sm.sale_id]
         );
       }
+      await db.execAsync(MIGRATION_V3);
     });
 
     // 3. Restore image files to disk

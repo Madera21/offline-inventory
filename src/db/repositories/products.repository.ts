@@ -11,8 +11,33 @@ import {
 } from '../../types';
 import { getCurrentIsoTimestamp } from '../../utils/dates';
 import { stockRepository } from './stock.repository';
+import { barcodeCandidates } from '../../utils/barcode';
+
+export class DuplicateBarcodeError extends Error {
+  constructor(public productId: string, productName: string) {
+    super(`This barcode already belongs to "${productName}". Open the existing product to edit it or add stock.`);
+    this.name = 'DuplicateBarcodeError';
+  }
+}
 
 export class ProductsRepository {
+  async findExistingBarcode(code: string): Promise<{ product_id: string; product_name: string } | null> {
+    const candidates = barcodeCandidates(code);
+    if (!candidates.length) return null;
+    const db = await getDatabase();
+    return db.getFirstAsync<{ product_id: string; product_name: string }>(
+      `SELECT v.product_id, p.name AS product_name FROM product_variants v
+       JOIN products p ON p.id = v.product_id
+       WHERE TRIM(v.barcode) IN (${candidates.map(() => '?').join(',')}) ORDER BY CASE WHEN p.status = 'ACTIVE' AND v.status = 'ACTIVE' THEN 0 ELSE 1 END, v.created_at ASC LIMIT 1;`,
+      candidates
+    );
+  }
+
+  private async assertBarcodeAvailable(code?: string | null): Promise<void> {
+    if (!code?.trim()) return;
+    const existing = await this.findExistingBarcode(code);
+    if (existing) throw new DuplicateBarcodeError(existing.product_id, existing.product_name);
+  }
   async getAllWithDetails(options?: {
     search?: string;
     categoryId?: string | null;
@@ -156,10 +181,15 @@ export class ProductsRepository {
   ): Promise<{ product: ProductWithDetails; variant: ProductVariant } | null> {
     const trimmed = code.trim();
     if (!trimmed) return null;
+    const candidates = barcodeCandidates(trimmed);
     const db = await getDatabase();
     const variant = await db.getFirstAsync<ProductVariant>(
-      'SELECT * FROM product_variants WHERE (barcode = ? OR sku = ?) AND status = \'ACTIVE\' LIMIT 1;',
-      [trimmed, trimmed]
+      `SELECT v.* FROM product_variants v JOIN products p ON p.id = v.product_id
+       WHERE (TRIM(v.barcode) IN (${candidates.map(() => '?').join(',')}) OR TRIM(v.sku) = ?)
+         AND v.status = 'ACTIVE' AND p.status = 'ACTIVE'
+       ORDER BY CASE WHEN TRIM(v.barcode) = ? THEN 0 WHEN TRIM(v.barcode) IN (${candidates.map(() => '?').join(',')}) THEN 1 ELSE 2 END,
+         v.created_at ASC, v.id ASC LIMIT 1;`,
+      [...candidates, trimmed, trimmed, ...candidates]
     );
     if (!variant) return null;
     const product = await this.getByIdWithDetails(variant.product_id);
@@ -206,6 +236,7 @@ export class ProductsRepository {
     const createdImages: ProductImage[] = [];
 
     await db.withTransactionAsync(async () => {
+      await this.assertBarcodeAvailable(defaultVariant.barcode);
       // 1. Insert product
       await db.runAsync(
         `INSERT INTO products (id, name, description, category_id, brand, notes, status, created_at, updated_at)
@@ -252,13 +283,14 @@ export class ProductsRepository {
             id: Crypto.randomUUID(),
             product_id: productId,
             relative_path: relPath,
+            frame_json: input.image_frame_json ?? null,
             sort_order: sort++,
             created_at: now,
           };
           await db.runAsync(
-            `INSERT INTO product_images (id, product_id, relative_path, sort_order, created_at)
-             VALUES (?, ?, ?, ?, ?);`,
-            [img.id, img.product_id, img.relative_path, img.sort_order, img.created_at]
+            `INSERT INTO product_images (id, product_id, relative_path, sort_order, created_at, frame_json)
+             VALUES (?, ?, ?, ?, ?, ?);`,
+            [img.id, img.product_id, img.relative_path, img.sort_order, img.created_at, img.frame_json ?? null]
           );
           createdImages.push(img);
         }
@@ -335,6 +367,7 @@ export class ProductsRepository {
     }
   ): Promise<ProductVariant> {
     const db = await getDatabase();
+    await this.assertBarcodeAvailable(variantData.barcode);
     const now = getCurrentIsoTimestamp();
     const variantId = Crypto.randomUUID();
 
@@ -404,6 +437,11 @@ export class ProductsRepository {
       [img.id, img.product_id, img.relative_path, img.sort_order, img.created_at]
     );
     return img;
+  }
+
+  async updateImageFrame(imageId: string, frameJson: string): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync('UPDATE product_images SET frame_json = ? WHERE id = ?;', [frameJson, imageId]);
   }
 
   async removeImage(imageId: string): Promise<string | null> {

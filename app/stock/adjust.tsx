@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,15 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
 import { stockRepository } from '../../src/db/repositories/stock.repository';
 import { ProductWithDetails, ProductVariant, StockMovementType } from '../../src/types';
 import { StockBadge } from '../../src/components/StockBadge';
 import { SearchBar } from '../../src/components/SearchBar';
+import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
+import { StockReasonPicker, MANUAL_STOCK_REASON } from '../../src/components/StockReasonPicker';
 
 export default function StockAdjustScreen() {
   const router = useRouter();
@@ -29,11 +31,15 @@ export default function StockAdjustScreen() {
   // Search & selector modal state
   const [search, setSearch] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
+  const scanInProgress = React.useRef(false);
 
   // Form state
   const [movementType, setMovementType] = useState<StockMovementType>('RESTOCK');
-  const [quantityInput, setQuantityInput] = useState('');
+  const [quantityInput, setQuantityInput] = useState('1');
   const [reasonInput, setReasonInput] = useState('');
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -50,9 +56,6 @@ export default function StockAdjustScreen() {
             : prod.variants[0];
           setSelectedVariant(variant || null);
         }
-      } else if (allProducts.length > 0) {
-        setSelectedProduct(allProducts[0]);
-        setSelectedVariant(allProducts[0].variants[0] || null);
       }
     } catch (err) {
       console.error('Failed to load products for stock adjustment:', err);
@@ -61,14 +64,56 @@ export default function StockAdjustScreen() {
     }
   }, [params.productId, params.variantId]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData]));
 
   const handleSelectVariant = (prod: ProductWithDetails, variant: ProductVariant) => {
     setSelectedProduct(prod);
     setSelectedVariant(variant);
     setShowPicker(false);
+  };
+
+  const openManualSearch = () => {
+    setSearch('');
+    setShowPicker(true);
+  };
+
+  const openBarcodeScanner = () => {
+    setShowPicker(false);
+    setScannerOpen(true);
+  };
+
+  const chooseProductMethod = () => {
+    Alert.alert('Find Product', 'How would you like to find the product?', [
+      { text: 'Scan Barcode', onPress: openBarcodeScanner },
+      { text: 'Find Manually', onPress: openManualSearch },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleBarcodeScanned = async (code: string) => {
+    if (scanInProgress.current) return;
+    scanInProgress.current = true;
+    setScannerOpen(false);
+    setLookingUpBarcode(true);
+    try {
+      const match = await productsRepository.findByBarcodeOrSku(code);
+      if (match && match.product.status === 'ACTIVE' && match.variant.status === 'ACTIVE') {
+        handleSelectVariant(match.product, match.variant);
+      } else {
+        Alert.alert('Product Not Found', `No active product matches "${code}". Find the product manually or scan another barcode.`, [
+          { text: 'Find Manually', onPress: openManualSearch },
+          { text: 'Scan Again', onPress: openBarcodeScanner },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
+      }
+    } catch (err: any) {
+      Alert.alert('Barcode Lookup Failed', err?.message || 'Please try again or find the product manually.');
+    } finally {
+      scanInProgress.current = false;
+      setLookingUpBarcode(false);
+    }
   };
 
   const handleCommitAdjustment = async () => {
@@ -83,8 +128,9 @@ export default function StockAdjustScreen() {
       return;
     }
 
-    if (!reasonInput.trim()) {
-      Alert.alert('Reason Required', 'Please enter a reason or explanation for this stock movement.');
+    const reason = selectedReason === MANUAL_STOCK_REASON ? reasonInput.trim() : selectedReason;
+    if (!reason) {
+      Alert.alert('Reason Required', selectedReason === MANUAL_STOCK_REASON ? 'Please write your reason.' : 'Please select a reason for this stock movement.');
       return;
     }
 
@@ -106,7 +152,7 @@ export default function StockAdjustScreen() {
                 variantId: selectedVariant.id,
                 movementType,
                 quantityDelta: delta,
-                reason: reasonInput.trim(),
+                reason,
               });
 
               Alert.alert(
@@ -129,7 +175,7 @@ export default function StockAdjustScreen() {
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.brand?.toLowerCase().includes(search.toLowerCase()) ||
-      p.variants.some((v) => v.label.toLowerCase().includes(search.toLowerCase()) || v.sku?.toLowerCase().includes(search.toLowerCase()))
+      p.variants.some((v) => v.label.toLowerCase().includes(search.toLowerCase()) || v.sku?.toLowerCase().includes(search.toLowerCase()) || v.barcode?.toLowerCase().includes(search.toLowerCase()))
   );
 
   if (loading) {
@@ -144,9 +190,22 @@ export default function StockAdjustScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Target Product Selection */}
       <Text style={styles.sectionHeader}>Target Product & Variant</Text>
+      <Text style={styles.selectorSubtitle}>How would you like to find the product?</Text>
+      <View style={styles.selectionActions}>
+        <TouchableOpacity style={styles.selectionAction} onPress={openBarcodeScanner} disabled={lookingUpBarcode || submitting}>
+          <Ionicons name="barcode-outline" size={24} color="#2563EB" />
+          <Text style={styles.selectionActionText}>Scan Barcode</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.selectionAction} onPress={openManualSearch} disabled={lookingUpBarcode || submitting}>
+          <Ionicons name="search-outline" size={24} color="#2563EB" />
+          <Text style={styles.selectionActionText}>Find Manually</Text>
+        </TouchableOpacity>
+      </View>
+      {lookingUpBarcode && <ActivityIndicator style={{ marginBottom: 12 }} color="#2563EB" />}
       <TouchableOpacity
         style={styles.selectorCard}
-        onPress={() => setShowPicker(!showPicker)}
+        onPress={chooseProductMethod}
+        disabled={lookingUpBarcode || submitting}
         activeOpacity={0.8}
       >
         <View style={styles.selectorInfo}>
@@ -166,9 +225,12 @@ export default function StockAdjustScreen() {
           <SearchBar
             value={search}
             onChangeText={setSearch}
-            placeholder="Filter products..."
+            placeholder="Search name, SKU, or barcode..."
           />
           <ScrollView style={styles.pickerList} nestedScrollEnabled>
+            {!filteredProducts.some((prod) => prod.variants.length > 0) && (
+              <Text style={styles.selectorSubtitle}>No products found. Try another search.</Text>
+            )}
             {filteredProducts.map((prod) =>
               prod.variants.map((variant) => {
                 const isSelected = selectedVariant?.id === variant.id;
@@ -228,7 +290,13 @@ export default function StockAdjustScreen() {
             <TouchableOpacity
               key={item.type}
               style={[styles.typeOption, isActive && styles.typeOptionActive]}
-              onPress={() => setMovementType(item.type)}
+              onPress={() => {
+                if (movementType !== item.type) {
+                  setMovementType(item.type);
+                  setSelectedReason(null);
+                  setReasonInput('');
+                }
+              }}
             >
               <Ionicons name={item.icon} size={20} color={isActive ? item.color : '#64748B'} />
               <Text style={[styles.typeLabel, isActive && { color: item.color, fontWeight: '700' }]}>
@@ -245,34 +313,55 @@ export default function StockAdjustScreen() {
         <Text style={styles.label}>
           Quantity ({movementType === 'DAMAGE' ? 'Units to Deduct' : 'Units to Add'}) *
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 12"
-          placeholderTextColor="#94A3B8"
-          keyboardType="number-pad"
-          value={quantityInput}
-          onChangeText={setQuantityInput}
-        />
+        <View style={styles.quantityControls}>
+          <TouchableOpacity
+            style={[styles.quantityButton, (submitting || (parseInt(quantityInput, 10) || 0) <= 1) && styles.submitButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Decrease quantity"
+            disabled={submitting || (parseInt(quantityInput, 10) || 0) <= 1}
+            onPress={() => setQuantityInput((value) => String(Math.max(1, (parseInt(value, 10) || 1) - 1)))}
+          >
+            <Ionicons name="remove" size={22} color="#2563EB" />
+          </TouchableOpacity>
+          <TextInput
+            style={[styles.input, styles.quantityInput]}
+            accessibilityLabel="Quantity"
+            placeholder="1"
+            placeholderTextColor="#94A3B8"
+            keyboardType="number-pad"
+            value={quantityInput}
+            onChangeText={(value) => setQuantityInput(value.replace(/[^0-9]/g, ''))}
+            editable={!submitting}
+          />
+          <TouchableOpacity
+            style={styles.quantityButton}
+            accessibilityRole="button"
+            accessibilityLabel="Increase quantity"
+            disabled={submitting}
+            onPress={() => setQuantityInput((value) => String((parseInt(value, 10) || 0) + 1))}
+          >
+            <Ionicons name="add" size={22} color="#2563EB" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Required Reason / Audit Note *</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="State the reason for this adjustment (e.g. Broken bottle during restocking, Supplier batch received)"
-          placeholderTextColor="#94A3B8"
-          multiline
-          numberOfLines={3}
-          value={reasonInput}
-          onChangeText={setReasonInput}
+        <Text style={styles.label}>Reason *</Text>
+        <StockReasonPicker
+          movementType={movementType}
+          selectedReason={selectedReason}
+          manualReason={reasonInput}
+          onSelect={setSelectedReason}
+          onManualChange={setReasonInput}
+          disabled={submitting}
         />
       </View>
 
       {/* Submit Button */}
       <TouchableOpacity
-        style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+        style={[styles.submitButton, (submitting || lookingUpBarcode || !selectedVariant) && styles.submitButtonDisabled]}
         onPress={handleCommitAdjustment}
-        disabled={submitting}
+        disabled={submitting || lookingUpBarcode || !selectedVariant}
         activeOpacity={0.85}
       >
         {submitting ? (
@@ -281,11 +370,60 @@ export default function StockAdjustScreen() {
           <Text style={styles.submitButtonText}>Commit Stock Adjustment</Text>
         )}
       </TouchableOpacity>
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleBarcodeScanned}
+        title="Scan Product to Restock"
+        enableContinuousToggle={false}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  quantityButton: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#EFF6FF',
+  },
+  quantityInput: {
+    width: 90,
+    height: 46,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 12,
+  },
+  selectionAction: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  selectionActionText: {
+    color: '#2563EB',
+    fontWeight: '700',
+    fontSize: 14,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductWithDetails } from '../types';
 import { StockBadge } from './StockBadge';
 import { MoneyText } from './MoneyText';
 import { resolveImageUri } from '../services/image.service';
+import { FramedProductImage } from './FramedProductImage';
+import { readImageFrame } from '../utils/imageFrame';
 
 interface ProductCardProps {
   product: ProductWithDetails;
@@ -20,7 +22,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+          <FramedProductImage uri={imageUri} frame={readImageFrame(product.images[0]?.frame_json)} style={styles.image} />
         ) : (
           <View style={styles.placeholderContainer}>
             <Ionicons name="image-outline" size={28} color="#94A3B8" />

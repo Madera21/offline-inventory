@@ -53,6 +53,7 @@ export interface ProductVariant {
 }
 
 export interface ProductImage {
+  frame_json?: string | null;
   id: string;
   product_id: string;
   relative_path: string;
@@ -135,6 +136,7 @@ export interface CreateProductInput {
   barcode?: string | null;
   low_stock_threshold?: number | null;
   image_relative_paths?: string[];
+  image_frame_json?: string;
 }
 
 export interface UpdateProductInput {

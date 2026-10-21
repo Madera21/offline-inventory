@@ -42,7 +42,7 @@ export default function InventoryScreen() {
         if (online) {
           Alert.alert(
             'Product Identified Online!',
-            `"${online.name}" (${online.brand || 'No brand'})\n\nWould you like to add this product with its online specs & photo?`,
+            `"${online.name}" (${online.brand || 'No brand'})\n\nAdd this product with its online details? You can choose the photo before saving.`,
             [
               { text: 'Cancel', style: 'cancel' },
               {
