@@ -24,6 +24,50 @@ export default function MoreScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => router.push('/stock/adjust')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="swap-vertical-outline" size={20} color="#D97706" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Stock Adjustment</Text>
+            <Text style={styles.menuSubtitle}>Record restocking, damage, or audit count</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Diagnostics & Integrity</Text>
+      <View style={styles.menuGroup}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={async () => {
+            try {
+              const { stockRepository } = await import('../../src/db/repositories/stock.repository');
+              const res = await stockRepository.reconcileAllVariants();
+              Alert.alert(
+                'Reconciliation Audit Complete',
+                `Audited ${res.totalChecked} variant(s).\n${res.discrepanciesFixed === 0 ? 'All stored quantities perfectly match the movement ledger.' : `Repaired ${res.discrepanciesFixed} discrepancy(ies).`}`
+              );
+            } catch (err: any) {
+              Alert.alert('Audit Error', err?.message || 'Failed to reconcile stock.');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#F0FDF4' }]}>
+            <Ionicons name="shield-checkmark-outline" size={20} color="#16A34A" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Reconcile Stock Ledger</Text>
+            <Text style={styles.menuSubtitle}>Audit stored balances against transaction movements</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>Reports & Data</Text>

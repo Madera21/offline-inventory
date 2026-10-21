@@ -63,6 +63,14 @@ export default function RootLayout() {
           options={{ title: 'Edit Product' }}
         />
         <Stack.Screen
+          name="products/[id]/variants"
+          options={{ title: 'Manage Variants' }}
+        />
+        <Stack.Screen
+          name="stock/adjust"
+          options={{ title: 'Stock Adjustment' }}
+        />
+        <Stack.Screen
           name="categories/index"
           options={{ title: 'Manage Categories' }}
         />

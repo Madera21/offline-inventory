@@ -270,13 +270,22 @@ export default function ProductDetailsScreen() {
       {/* Variants Section */}
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeader}>Variants & Stock ({product.variants.length})</Text>
-        <TouchableOpacity
-          style={styles.addVariantLink}
-          onPress={() => setVariantModalVisible(true)}
-        >
-          <Ionicons name="add" size={16} color="#2563EB" />
-          <Text style={styles.addVariantText}>Add Variant</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity
+            style={styles.addVariantLink}
+            onPress={() => router.push(`/products/${product.id}/variants`)}
+          >
+            <Ionicons name="list-outline" size={16} color="#2563EB" />
+            <Text style={styles.addVariantText}>Manage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addVariantLink}
+            onPress={() => setVariantModalVisible(true)}
+          >
+            <Ionicons name="add" size={16} color="#2563EB" />
+            <Text style={styles.addVariantText}>Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {product.variants.map((v) => (
