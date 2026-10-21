@@ -151,6 +151,22 @@ export class ProductsRepository {
     };
   }
 
+  async findByBarcodeOrSku(
+    code: string
+  ): Promise<{ product: ProductWithDetails; variant: ProductVariant } | null> {
+    const trimmed = code.trim();
+    if (!trimmed) return null;
+    const db = await getDatabase();
+    const variant = await db.getFirstAsync<ProductVariant>(
+      'SELECT * FROM product_variants WHERE (barcode = ? OR sku = ?) AND status = \'ACTIVE\' LIMIT 1;',
+      [trimmed, trimmed]
+    );
+    if (!variant) return null;
+    const product = await this.getByIdWithDetails(variant.product_id);
+    if (!product) return null;
+    return { product, variant };
+  }
+
   async create(input: CreateProductInput): Promise<ProductWithDetails> {
     const db = await getDatabase();
     const now = getCurrentIsoTimestamp();

@@ -10,7 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { categoriesRepository } from '../../src/db/repositories/categories.repository';
 import { productsRepository } from '../../src/db/repositories/products.repository';
@@ -18,12 +18,16 @@ import {
   pickImageFromGallery,
   captureImageWithCamera,
   resolveImageUri,
+  detectBarcodeFromImage,
 } from '../../src/services/image.service';
+import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 import { parseMoneyToMinor } from '../../src/utils/currency';
 import { Category } from '../../src/types';
 
 export default function NewProductScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ barcode?: string }>();
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,10 +41,14 @@ export default function NewProductScreen() {
   const [unitLabel, setUnitLabel] = useState('piece');
   const [lowStockThreshold, setLowStockThreshold] = useState('');
   const [sku, setSku] = useState('');
-  const [barcode, setBarcode] = useState('');
+  const [barcode, setBarcode] = useState(params.barcode || '');
   const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [imageRelativePath, setImageRelativePath] = useState<string | null>(null);
+
+  // Scanner & image analysis state
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
 
   useEffect(() => {
     async function loadCats() {
@@ -54,6 +62,30 @@ export default function NewProductScreen() {
     loadCats();
   }, []);
 
+  const checkImageForBarcode = async (path: string) => {
+    try {
+      setAnalyzingImage(true);
+      const detected = await detectBarcodeFromImage(path);
+      if (detected) {
+        Alert.alert(
+          'Barcode Detected in Image!',
+          `Found barcode: "${detected}". Would you like to use this for the product?`,
+          [
+            { text: 'Keep Current', style: 'cancel' },
+            {
+              text: 'Use Barcode',
+              onPress: () => setBarcode(detected),
+            },
+          ]
+        );
+      }
+    } catch (err) {
+      console.warn('Failed to detect barcode from image:', err);
+    } finally {
+      setAnalyzingImage(false);
+    }
+  };
+
   const handlePickPhoto = () => {
     Alert.alert('Add Product Photo', 'Choose photo source', [
       {
@@ -61,7 +93,10 @@ export default function NewProductScreen() {
         onPress: async () => {
           try {
             const path = await captureImageWithCamera();
-            if (path) setImageRelativePath(path);
+            if (path) {
+              setImageRelativePath(path);
+              checkImageForBarcode(path);
+            }
           } catch (err: any) {
             Alert.alert('Camera Error', err?.message || 'Failed to capture photo.');
           }
@@ -72,7 +107,10 @@ export default function NewProductScreen() {
         onPress: async () => {
           try {
             const path = await pickImageFromGallery();
-            if (path) setImageRelativePath(path);
+            if (path) {
+              setImageRelativePath(path);
+              checkImageForBarcode(path);
+            }
           } catch (err: any) {
             Alert.alert('Gallery Error', err?.message || 'Failed to pick photo.');
           }
@@ -128,212 +166,248 @@ export default function NewProductScreen() {
   const previewUri = resolveImageUri(imageRelativePath);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Photo Picker */}
-      <View style={styles.imageSection}>
-        {previewUri ? (
-          <View style={styles.imagePreviewContainer}>
-            <Image source={{ uri: previewUri }} style={styles.imagePreview} />
-            <TouchableOpacity
-              style={styles.removeImageBtn}
-              onPress={() => setImageRelativePath(null)}
-            >
-              <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Photo Picker */}
+        <View style={styles.imageSection}>
+          {previewUri ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: previewUri }} style={styles.imagePreview} />
+              <TouchableOpacity
+                style={styles.removeImageBtn}
+                onPress={() => setImageRelativePath(null)}
+              >
+                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+              {analyzingImage && (
+                <View style={styles.analyzingBanner}>
+                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.analyzingText}>Detecting barcodes in photo...</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto}>
+              <Ionicons name="camera-outline" size={32} color="#64748B" />
+              <Text style={styles.photoPlaceholderText}>Add Product Photo</Text>
             </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto}>
-            <Ionicons name="camera-outline" size={32} color="#64748B" />
-            <Text style={styles.photoPlaceholderText}>Add Product Photo</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          )}
+        </View>
 
-      {/* Basic Info */}
-      <Text style={styles.sectionHeader}>Basic Information</Text>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Product Name *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. San Miguel Pale Pilsen 330ml"
-          placeholderTextColor="#94A3B8"
-          value={name}
-          onChangeText={setName}
-        />
-      </View>
+        {/* Basic Info */}
+        <Text style={styles.sectionHeader}>Basic Information</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Product Name *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. San Miguel Pale Pilsen 330ml"
+            placeholderTextColor="#94A3B8"
+            value={name}
+            onChangeText={setName}
+          />
+        </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPicker}>
-          <TouchableOpacity
-            style={[styles.catChip, categoryId === null && styles.catChipActive]}
-            onPress={() => setCategoryId(null)}
-          >
-            <Text style={[styles.catChipText, categoryId === null && styles.catChipTextActive]}>
-              Uncategorized
-            </Text>
-          </TouchableOpacity>
-          {categories.map((c) => (
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPicker}>
             <TouchableOpacity
-              key={c.id}
-              style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
-              onPress={() => setCategoryId(c.id)}
+              style={[styles.catChip, categoryId === null && styles.catChipActive]}
+              onPress={() => setCategoryId(null)}
             >
-              <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>
-                {c.name}
+              <Text style={[styles.catChipText, categoryId === null && styles.catChipTextActive]}>
+                Uncategorized
               </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            {categories.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.catChip, categoryId === c.id && styles.catChipActive]}
+                onPress={() => setCategoryId(c.id)}
+              >
+                <Text style={[styles.catChipText, categoryId === c.id && styles.catChipTextActive]}>
+                  {c.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Brand</Text>
+        <View style={styles.row}>
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Brand</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. San Miguel"
+              placeholderTextColor="#94A3B8"
+              value={brand}
+              onChangeText={setBrand}
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Base Unit</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="piece, bottle, box, kg"
+              placeholderTextColor="#94A3B8"
+              value={unitLabel}
+              onChangeText={setUnitLabel}
+            />
+          </View>
+        </View>
+
+        {/* Pricing & Stock */}
+        <Text style={styles.sectionHeader}>Pricing & Inventory</Text>
+        <View style={styles.row}>
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Selling Price (₱) *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0.00"
+              placeholderTextColor="#94A3B8"
+              keyboardType="decimal-pad"
+              value={price}
+              onChangeText={setPrice}
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Purchase Cost (₱)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Optional"
+              placeholderTextColor="#94A3B8"
+              keyboardType="decimal-pad"
+              value={cost}
+              onChangeText={setCost}
+            />
+          </View>
+        </View>
+
+        <View style={styles.row}>
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Opening Stock</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="0"
+              placeholderTextColor="#94A3B8"
+              keyboardType="number-pad"
+              value={openingStock}
+              onChangeText={setOpeningStock}
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>Low Stock Limit</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Alert limit (e.g. 5)"
+              placeholderTextColor="#94A3B8"
+              keyboardType="number-pad"
+              value={lowStockThreshold}
+              onChangeText={setLowStockThreshold}
+            />
+          </View>
+        </View>
+
+        {/* Barcode & Identifiers */}
+        <Text style={styles.sectionHeader}>Identifiers (Optional)</Text>
+        <View style={styles.row}>
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>SKU</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. BEV-001"
+              placeholderTextColor="#94A3B8"
+              value={sku}
+              onChangeText={setSku}
+            />
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <View style={styles.labelWithAction}>
+              <Text style={styles.label}>Barcode</Text>
+              <TouchableOpacity
+                style={styles.scanLink}
+                onPress={() => setScannerOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="barcode-outline" size={14} color="#0284C7" />
+                <Text style={styles.scanLinkText}>Scan</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.barcodeInputWrapper}>
+              <TextInput
+                style={[styles.input, styles.barcodeInput]}
+                placeholder="e.g. 480001234567"
+                placeholderTextColor="#94A3B8"
+                value={barcode}
+                onChangeText={setBarcode}
+              />
+              <TouchableOpacity
+                style={styles.barcodeIconBtn}
+                onPress={() => setScannerOpen(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="camera-outline" size={20} color="#0284C7" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Description / Notes */}
+        <Text style={styles.sectionHeader}>Additional Details</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Description</Text>
           <TextInput
-            style={styles.input}
-            placeholder="e.g. San Miguel"
+            style={[styles.input, styles.textArea]}
+            placeholder="Product description..."
             placeholderTextColor="#94A3B8"
-            value={brand}
-            onChangeText={setBrand}
+            multiline
+            numberOfLines={3}
+            value={description}
+            onChangeText={setDescription}
           />
         </View>
 
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Base Unit</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Notes / Supplier Info</Text>
           <TextInput
-            style={styles.input}
-            placeholder="piece, bottle, box, kg"
+            style={[styles.input, styles.textArea]}
+            placeholder="Private supplier notes or remarks..."
             placeholderTextColor="#94A3B8"
-            value={unitLabel}
-            onChangeText={setUnitLabel}
-          />
-        </View>
-      </View>
-
-      {/* Pricing & Stock */}
-      <Text style={styles.sectionHeader}>Pricing & Inventory</Text>
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Selling Price (₱) *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0.00"
-            placeholderTextColor="#94A3B8"
-            keyboardType="decimal-pad"
-            value={price}
-            onChangeText={setPrice}
+            multiline
+            numberOfLines={2}
+            value={notes}
+            onChangeText={setNotes}
           />
         </View>
 
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Purchase Cost (₱)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Optional"
-            placeholderTextColor="#94A3B8"
-            keyboardType="decimal-pad"
-            value={cost}
-            onChangeText={setCost}
-          />
-        </View>
-      </View>
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Product</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
 
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Opening Stock</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="0"
-            placeholderTextColor="#94A3B8"
-            keyboardType="number-pad"
-            value={openingStock}
-            onChangeText={setOpeningStock}
-          />
-        </View>
-
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Low Stock Limit</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Alert limit (e.g. 5)"
-            placeholderTextColor="#94A3B8"
-            keyboardType="number-pad"
-            value={lowStockThreshold}
-            onChangeText={setLowStockThreshold}
-          />
-        </View>
-      </View>
-
-      {/* Barcode & Identifiers */}
-      <Text style={styles.sectionHeader}>Identifiers (Optional)</Text>
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>SKU</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. BEV-001"
-            placeholderTextColor="#94A3B8"
-            value={sku}
-            onChangeText={setSku}
-          />
-        </View>
-
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>Barcode</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 480001234567"
-            placeholderTextColor="#94A3B8"
-            keyboardType="number-pad"
-            value={barcode}
-            onChangeText={setBarcode}
-          />
-        </View>
-      </View>
-
-      {/* Description / Notes */}
-      <Text style={styles.sectionHeader}>Additional Details</Text>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Product description..."
-          placeholderTextColor="#94A3B8"
-          multiline
-          numberOfLines={3}
-          value={description}
-          onChangeText={setDescription}
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Notes / Supplier Info</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Private supplier notes or remarks..."
-          placeholderTextColor="#94A3B8"
-          multiline
-          numberOfLines={2}
-          value={notes}
-          onChangeText={setNotes}
-        />
-      </View>
-
-      {/* Submit Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.saveButtonText}>Save Product</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+      {/* Barcode Camera Scanner Modal */}
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(scannedCode) => {
+          setBarcode(scannedCode);
+        }}
+        title="Scan Barcode for Product"
+      />
+    </>
   );
 }
 
@@ -389,6 +463,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  analyzingBanner: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  analyzingText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   sectionHeader: {
     fontSize: 14,
     fontWeight: '700',
@@ -410,6 +502,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
     marginBottom: 6,
+  },
+  labelWithAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scanLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  scanLinkText: {
+    fontSize: 12,
+    color: '#0284C7',
+    fontWeight: '700',
+  },
+  barcodeInputWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  barcodeInput: {
+    paddingRight: 40,
+  },
+  barcodeIconBtn: {
+    position: 'absolute',
+    right: 10,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     backgroundColor: '#FFFFFF',

@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
+import { Camera } from 'expo-camera';
 
 const IMAGES_SUBDIRECTORY = 'images/';
 
@@ -105,5 +106,23 @@ export async function deleteImageFile(relativePath: string): Promise<void> {
     }
   } catch (error) {
     console.warn('[ImageService] Failed to delete image file:', error);
+  }
+}
+
+/**
+ * Scans an image file (local full URI or relative path) to identify any embedded 1D/2D barcode offline.
+ * Returns the decoded barcode string, or null if no barcode is found.
+ */
+export async function detectBarcodeFromImage(imagePathOrUri: string): Promise<string | null> {
+  try {
+    const fullUri = resolveImageUri(imagePathOrUri) || imagePathOrUri;
+    const results = await Camera.scanFromURLAsync(fullUri);
+    if (results && results.length > 0 && results[0]?.data) {
+      return results[0].data;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[ImageService] Failed to detect barcode from image:', error);
+    return null;
   }
 }

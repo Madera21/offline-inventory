@@ -23,6 +23,7 @@ import { MoneyText } from '../../src/components/MoneyText';
 import { StockBadge } from '../../src/components/StockBadge';
 import { resolveImageUri } from '../../src/services/image.service';
 import { parseMoneyToMinor, formatMoney } from '../../src/utils/currency';
+import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 
 export default function QuickSaleScreen() {
   const router = useRouter();
@@ -40,6 +41,49 @@ export default function QuickSaleScreen() {
   const [discountInput, setDiscountInput] = useState('');
   const [cashInput, setCashInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Barcode scanner
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  const handleBarcodeScanned = async (code: string) => {
+    try {
+      const match = await productsRepository.findByBarcodeOrSku(code);
+      if (match) {
+        const { product, variant } = match;
+        if (variant.stock_quantity <= 0) {
+          Alert.alert('Out of Stock', `"${product.name}" (${variant.label}) has 0 stock.`);
+          return;
+        }
+
+        cart.addItem({
+          variant_id: variant.id,
+          product_id: product.id,
+          product_name: product.name,
+          variant_label: variant.label,
+          unit_label: variant.unit_label,
+          unit_price_minor: variant.price_minor,
+          unit_cost_minor: variant.cost_minor,
+          max_available_stock: variant.stock_quantity,
+        });
+
+        Alert.alert('Added to Cart', `1x "${product.name}" (${variant.label}) added to cart.`);
+      } else {
+        Alert.alert(
+          'Barcode Not Found',
+          `No item matches barcode "${code}". Would you like to create a new product with this barcode?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Create Product',
+              onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
+            },
+          ]
+        );
+      }
+    } catch (err) {
+      console.error('Failed to process barcode scan in quick sale:', err);
+    }
+  };
 
   // Sale success modal
   const [completedReceipt, setCompletedReceipt] = useState<{
@@ -169,7 +213,18 @@ export default function QuickSaleScreen() {
     <View style={styles.container}>
       {/* Search Header */}
       <View style={styles.searchSection}>
-        <SearchBar value={search} onChangeText={setSearch} placeholder="Search product to add..." />
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <SearchBar value={search} onChangeText={setSearch} placeholder="Search product, SKU or barcode..." />
+          </View>
+          <TouchableOpacity
+            style={styles.scanButton}
+            onPress={() => setScannerOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Product Catalog Grid */}
@@ -469,6 +524,14 @@ export default function QuickSaleScreen() {
           </View>
         </View>
       </Modal>
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleBarcodeScanned}
+        title="Scan Product to Add"
+        continuous={true}
+      />
     </View>
   );
 }
@@ -485,6 +548,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scanButton: {
+    backgroundColor: '#0284C7',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   listContent: {
     padding: 12,

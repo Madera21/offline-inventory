@@ -16,6 +16,8 @@ import { ProductWithDetails, Category, EntityStatus } from '../../src/types';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ProductCard } from '../../src/components/ProductCard';
 import { EmptyState } from '../../src/components/EmptyState';
+import { Alert } from 'react-native';
+import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 
 export default function InventoryScreen() {
   const router = useRouter();
@@ -26,6 +28,30 @@ export default function InventoryScreen() {
   const [statusFilter, setStatusFilter] = useState<EntityStatus>('ACTIVE');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  const handleBarcodeScanned = async (code: string) => {
+    try {
+      const match = await productsRepository.findByBarcodeOrSku(code);
+      if (match) {
+        router.push(`/products/${match.product.id}`);
+      } else {
+        Alert.alert(
+          'Barcode Not Found',
+          `No product matches barcode "${code}". Would you like to create a new product with this barcode?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Add Product',
+              onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
+            },
+          ]
+        );
+      }
+    } catch (err) {
+      console.error('Failed to lookup barcode in inventory:', err);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -62,7 +88,18 @@ export default function InventoryScreen() {
     <View style={styles.container}>
       {/* Search Bar */}
       <View style={styles.searchSection}>
-        <SearchBar value={search} onChangeText={setSearch} />
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <SearchBar value={search} onChangeText={setSearch} placeholder="Search name, SKU, or barcode..." />
+          </View>
+          <TouchableOpacity
+            style={styles.scanButton}
+            onPress={() => setScannerOpen(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Category filter scroll */}
@@ -156,6 +193,14 @@ export default function InventoryScreen() {
           <Ionicons name="add" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={handleBarcodeScanned}
+        title="Scan Barcode to View Product"
+      />
     </View>
   );
 }
@@ -170,6 +215,24 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     backgroundColor: '#FFFFFF',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scanButton: {
+    backgroundColor: '#0284C7',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   categoriesContainer: {
     backgroundColor: '#FFFFFF',
