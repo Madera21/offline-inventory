@@ -71,6 +71,18 @@ export default function RootLayout() {
           options={{ title: 'Stock Adjustment' }}
         />
         <Stack.Screen
+          name="sales/[id]"
+          options={{ title: 'Sale Receipt' }}
+        />
+        <Stack.Screen
+          name="reports/index"
+          options={{ title: 'Reports & Analytics' }}
+        />
+        <Stack.Screen
+          name="backup/index"
+          options={{ title: 'Backup & Restore' }}
+        />
+        <Stack.Screen
           name="categories/index"
           options={{ title: 'Manage Categories' }}
         />
