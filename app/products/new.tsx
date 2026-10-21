@@ -22,11 +22,14 @@ import {
 } from '../../src/services/image.service';
 import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 import { parseMoneyToMinor } from '../../src/utils/currency';
+import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
+import { downloadAndSaveRemoteImage } from '../../src/services/image.service';
 import { Category } from '../../src/types';
 
 export default function NewProductScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ barcode?: string }>();
+  const params = useLocalSearchParams<{ barcode?: string; lookup?: string }>();
+  const [lookingUpOnline, setLookingUpOnline] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +64,71 @@ export default function NewProductScreen() {
     }
     loadCats();
   }, []);
+
+  const handleOnlineLookup = async (codeToLookup?: string) => {
+    const code = (codeToLookup || barcode).trim();
+    if (!code) {
+      Alert.alert('Barcode Required', 'Please enter or scan a barcode first.');
+      return;
+    }
+
+    setLookingUpOnline(true);
+    try {
+      const result = await lookupProductByBarcodeOnline(code);
+      if (result) {
+        setName(result.name);
+        if (result.brand) setBrand(result.brand);
+        if (result.description) setDescription(result.description);
+        if (result.unitLabel) setUnitLabel(result.unitLabel);
+        if (result.barcode) setBarcode(result.barcode);
+
+        if (result.categoryName) {
+          const matched = categories.find(
+            (c) => c.name.toLowerCase() === result.categoryName?.toLowerCase()
+          );
+          if (matched) {
+            setCategoryId(matched.id);
+          } else {
+            try {
+              const newCat = await categoriesRepository.create(result.categoryName);
+              setCategories((prev) => [...prev, newCat]);
+              setCategoryId(newCat.id);
+            } catch (err) {
+              console.warn('Could not auto-create category:', err);
+            }
+          }
+        }
+
+        if (result.imageUrl && !imageRelativePath) {
+          const localImg = await downloadAndSaveRemoteImage(result.imageUrl);
+          if (localImg) {
+            setImageRelativePath(localImg);
+          }
+        }
+
+        Alert.alert(
+          'Product Identified Online!',
+          `Found "${result.name}" on ${result.source}.\n\nProduct details and image have been automatically filled.`,
+          [{ text: 'Awesome!' }]
+        );
+      } else {
+        Alert.alert(
+          'Not Found Online',
+          `No catalog match found for barcode "${code}". You can continue filling details manually.`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Online Lookup', err?.message || 'Failed to lookup product online.');
+    } finally {
+      setLookingUpOnline(false);
+    }
+  };
+
+  useEffect(() => {
+    if (params.lookup === '1' && params.barcode) {
+      handleOnlineLookup(params.barcode);
+    }
+  }, [params.lookup, params.barcode]);
 
   const checkImageForBarcode = async (path: string) => {
     try {
@@ -352,6 +420,23 @@ export default function NewProductScreen() {
                 <Ionicons name="camera-outline" size={20} color="#0284C7" />
               </TouchableOpacity>
             </View>
+            {barcode.trim().length >= 6 && (
+              <TouchableOpacity
+                style={[styles.autoFillBtn, lookingUpOnline && styles.autoFillBtnDisabled]}
+                onPress={() => handleOnlineLookup()}
+                disabled={lookingUpOnline}
+                activeOpacity={0.8}
+              >
+                {lookingUpOnline ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles" size={13} color="#FBBF24" style={{ marginRight: 4 }} />
+                    <Text style={styles.autoFillBtnText}>Auto-Fill from Web</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -404,6 +489,17 @@ export default function NewProductScreen() {
         onClose={() => setScannerOpen(false)}
         onScan={(scannedCode) => {
           setBarcode(scannedCode);
+          Alert.alert(
+            'Barcode Scanned!',
+            `Barcode: ${scannedCode}\n\nIdentify and auto-fill product details from the internet?`,
+            [
+              { text: 'Fill Manually', style: 'cancel' },
+              {
+                text: '⚡ Identify Online',
+                onPress: () => handleOnlineLookup(scannedCode),
+              },
+            ]
+          );
         }}
         title="Scan Barcode for Product"
       />
@@ -573,6 +669,24 @@ const styles = StyleSheet.create({
   catChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  autoFillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0284C7',
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginTop: 6,
+  },
+  autoFillBtnDisabled: {
+    opacity: 0.6,
+  },
+  autoFillBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   saveButton: {
     backgroundColor: '#2563EB',

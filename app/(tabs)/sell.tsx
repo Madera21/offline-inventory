@@ -24,6 +24,7 @@ import { StockBadge } from '../../src/components/StockBadge';
 import { resolveImageUri } from '../../src/services/image.service';
 import { parseMoneyToMinor, formatMoney } from '../../src/utils/currency';
 import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
+import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 
 export default function QuickSaleScreen() {
   const router = useRouter();
@@ -67,17 +68,33 @@ export default function QuickSaleScreen() {
         });
       } else {
         setScannerOpen(false);
-        Alert.alert(
-          'Barcode Not Found',
-          `No item matches barcode "${code}". Would you like to create a new product with this barcode?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Create Product',
-              onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
-            },
-          ]
-        );
+        const online = await lookupProductByBarcodeOnline(code, 3500);
+        if (online) {
+          Alert.alert(
+            'Product Identified Online!',
+            `"${online.name}" (${online.brand || 'No brand'})\n\nWould you like to add it to inventory with all online configs & photo?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Add Product',
+                onPress: () =>
+                  router.push(`/products/new?barcode=${encodeURIComponent(code)}&lookup=1`),
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Barcode Not Found',
+            `No item matches barcode "${code}". Would you like to create a new product with this barcode?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Create Product',
+                onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
+              },
+            ]
+          );
+        }
       }
     } catch (err) {
       console.error('Failed to process barcode scan in quick sale:', err);

@@ -18,6 +18,7 @@ import { ProductCard } from '../../src/components/ProductCard';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Alert } from 'react-native';
 import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
+import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 
 export default function InventoryScreen() {
   const router = useRouter();
@@ -36,17 +37,34 @@ export default function InventoryScreen() {
       if (match) {
         router.push(`/products/${match.product.id}`);
       } else {
-        Alert.alert(
-          'Barcode Not Found',
-          `No product matches barcode "${code}". Would you like to create a new product with this barcode?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Add Product',
-              onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
-            },
-          ]
-        );
+        setScannerOpen(false);
+        const online = await lookupProductByBarcodeOnline(code, 3500);
+        if (online) {
+          Alert.alert(
+            'Product Identified Online!',
+            `"${online.name}" (${online.brand || 'No brand'})\n\nWould you like to add this product with its online specs & photo?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Add Product',
+                onPress: () =>
+                  router.push(`/products/new?barcode=${encodeURIComponent(code)}&lookup=1`),
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Barcode Not Found',
+            `No product matches barcode "${code}". Would you like to create a new product with this barcode?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Add Product',
+                onPress: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`),
+              },
+            ]
+          );
+        }
       }
     } catch (err) {
       console.error('Failed to lookup barcode in inventory:', err);
