@@ -1,7 +1,4 @@
 module.exports = {
-  testEnvironment: 'node',
-  transform: {
-    '^.+\\.(ts|tsx)$': ['babel-jest', { configFile: './babel.config.js' }],
-  },
+  preset: 'jest-expo',
   testMatch: ['**/tests/**/*.test.(ts|tsx)'],
 };
