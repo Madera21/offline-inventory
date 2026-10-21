@@ -19,6 +19,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.offlineinventory.app",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false
     },
     "web": {

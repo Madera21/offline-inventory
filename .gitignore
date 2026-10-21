@@ -31,3 +31,13 @@ yarn-error.log*
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# local Android builds and release signing credentials
+.android-sdk/
+.signing/
+artifacts/
+*.apk
+*.aab
+*.jks
+*.keystore
+credentials.json
