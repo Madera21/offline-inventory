@@ -1,13 +1,51 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { deleteAllAppData } from '../../src/services/reset.service';
 
 export default function MoreScreen() {
   const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
+
+  const handleDeleteData = () => {
+    if (deletingRef.current) return;
+    Alert.alert(
+      'Delete All Data?',
+      'This permanently deletes all products, categories, stock history, sales, photos, and backups/CSV exports stored inside this app. Settings and the cart will be reset. Backups saved outside the app are kept.\n\nThis cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete All Data', style: 'destructive', onPress: async () => {
+          if (deletingRef.current) return;
+          deletingRef.current = true;
+          setDeleting(true);
+          try {
+            const { failedFiles } = await deleteAllAppData();
+            Alert.alert(
+              failedFiles ? 'Records Deleted — File Cleanup Incomplete' : 'All Data Deleted',
+              failedFiles
+                ? `Your records and cart were cleared, but ${failedFiles} local file or folder could not be removed. Try Delete All Data again to finish cleanup.`
+                : 'Your inventory is empty and settings have been reset.',
+              [{ text: 'OK', onPress: () => router.replace('/') }]
+            );
+          } catch (err: any) {
+            Alert.alert('Delete Failed', err?.message || 'Could not delete app data. Please try again.');
+          } finally {
+            deletingRef.current = false;
+            setDeleting(false);
+          }
+        } },
+      ]
+    );
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} pointerEvents={deleting ? 'none' : 'auto'}>
+      {deleting && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
+        <ActivityIndicator color="#DC2626" />
+        <Text>Deleting app data...</Text>
+      </View>}
       <Text style={styles.sectionTitle}>Inventory Configuration</Text>
       <View style={styles.menuGroup}>
         <TouchableOpacity
@@ -43,6 +81,32 @@ export default function MoreScreen() {
 
       <Text style={styles.sectionTitle}>Diagnostics & Integrity</Text>
       <View style={styles.menuGroup}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={async () => {
+            try {
+              const { seedDemoData } = await import('../../src/utils/seedData');
+              const res = await seedDemoData();
+              Alert.alert(
+                'Demo Data Loaded',
+                `Populated ${res.productsCount} products across ${res.categoriesCount} categories with initial stock and sample transactions.`
+              );
+            } catch (err: any) {
+              Alert.alert('Seed Error', err?.message || 'Failed to seed demo data.');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="sparkles-outline" size={20} color="#2563EB" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Load Sample Demo Data</Text>
+            <Text style={styles.menuSubtitle}>Seed sample catalog, variants, and stock for testing</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.menuItem}
           onPress={async () => {
@@ -100,6 +164,20 @@ export default function MoreScreen() {
             <Text style={styles.menuSubtitle}>Complete offline backup archive & CSV exports</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.sectionTitle}>Data Management</Text>
+      <View style={styles.menuGroup}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleDeleteData} disabled={deleting} activeOpacity={0.7}>
+          <View style={[styles.menuIcon, { backgroundColor: '#FEF2F2' }]}>
+            <Ionicons name="trash-outline" size={20} color="#DC2626" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={[styles.menuTitle, { color: '#DC2626' }]}>Delete All Data</Text>
+            <Text style={styles.menuSubtitle}>Clear inventory, sales, photos, and local backups</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#DC2626" />
         </TouchableOpacity>
       </View>
 

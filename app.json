@@ -34,8 +34,15 @@
           "cameraPermission": "The app needs access to your camera to take product photos."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Offline Inventory to access your camera to scan barcodes."
+        }
+      ],
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-status-bar"
     ]
   }
 }

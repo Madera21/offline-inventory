@@ -18,6 +18,7 @@ import { ProductWithDetails, ProductVariant } from '../../../src/types';
 import { MoneyText } from '../../../src/components/MoneyText';
 import { StockBadge } from '../../../src/components/StockBadge';
 import { parseMoneyToMinor, minorToDecimalString } from '../../../src/utils/currency';
+import { BarcodeScannerModal } from '../../../src/components/BarcodeScannerModal';
 
 export default function VariantsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,6 +39,9 @@ export default function VariantsScreen() {
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
   const [threshold, setThreshold] = useState('');
+
+  // Scanner modal state
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -258,16 +262,46 @@ export default function VariantsScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalLabel}>Low Stock Alert</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Threshold (e.g. 5)"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="number-pad"
-                  value={threshold}
-                  onChangeText={setThreshold}
-                />
+                <View style={styles.labelWithAction}>
+                  <Text style={styles.modalLabel}>Barcode</Text>
+                  <TouchableOpacity
+                    style={styles.scanLink}
+                    onPress={() => setScannerOpen(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="barcode-outline" size={13} color="#0284C7" />
+                    <Text style={styles.scanLinkText}>Scan</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.barcodeInputWrapper}>
+                  <TextInput
+                    style={[styles.input, styles.barcodeInput]}
+                    placeholder="Optional barcode"
+                    placeholderTextColor="#94A3B8"
+                    value={barcode}
+                    onChangeText={setBarcode}
+                  />
+                  <TouchableOpacity
+                    style={styles.barcodeIconBtn}
+                    onPress={() => setScannerOpen(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="camera-outline" size={18} color="#0284C7" />
+                  </TouchableOpacity>
+                </View>
               </View>
+            </View>
+
+            <View style={{ marginBottom: 8 }}>
+              <Text style={styles.modalLabel}>Low Stock Alert</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Threshold (e.g. 5)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+                value={threshold}
+                onChangeText={setThreshold}
+              />
             </View>
 
             <View style={styles.modalButtons}>
@@ -284,6 +318,14 @@ export default function VariantsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScannerModal
+        visible={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(code) => setBarcode(code)}
+        title="Scan Variant Barcode"
+      />
     </View>
   );
 }
@@ -295,20 +337,20 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
     padding: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   productName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: '#0F172A',
   },
@@ -322,23 +364,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#2563EB',
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   addBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   listContent: {
     padding: 16,
+    gap: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -349,39 +391,43 @@ const styles = StyleSheet.create({
   },
   variantLabel: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#0F172A',
   },
   price: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0F172A',
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 6,
+    marginVertical: 8,
   },
   costText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
   metaItem: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#64748B',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   cardActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
-    paddingTop: 8,
+    marginTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
@@ -389,11 +435,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
   },
   adjustBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#2563EB',
   },
@@ -421,6 +469,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
     marginBottom: 4,
+  },
+  labelWithAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scanLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  scanLinkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  barcodeInputWrapper: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  barcodeInput: {
+    paddingRight: 36,
+  },
+  barcodeIconBtn: {
+    position: 'absolute',
+    right: 8,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    top: -6,
   },
   input: {
     borderWidth: 1,

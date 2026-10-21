@@ -1,4 +1,23 @@
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 3;
+// Triggers preserve existing duplicates while preventing new ones, including archived records.
+export const MIGRATION_V3 = `
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_barcode_insert
+BEFORE INSERT ON product_variants
+WHEN NEW.barcode IS NOT NULL AND TRIM(NEW.barcode) <> ''
+BEGIN
+  SELECT RAISE(ABORT, 'Barcode already exists. Open the existing product to update stock.')
+  WHERE EXISTS (SELECT 1 FROM product_variants WHERE TRIM(barcode) = TRIM(NEW.barcode));
+END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_barcode_update
+BEFORE UPDATE OF barcode ON product_variants
+WHEN NEW.barcode IS NOT NULL AND TRIM(NEW.barcode) <> ''
+  AND TRIM(NEW.barcode) IS NOT TRIM(OLD.barcode)
+BEGIN
+  SELECT RAISE(ABORT, 'Barcode already exists. Open the existing product to update stock.')
+  WHERE EXISTS (SELECT 1 FROM product_variants WHERE id <> OLD.id AND TRIM(barcode) = TRIM(NEW.barcode));
+END;
+`;
+export const MIGRATION_V2 = 'ALTER TABLE product_images ADD COLUMN frame_json TEXT;';
 
 export const MIGRATION_V1 = `
 -- Schema version tracking

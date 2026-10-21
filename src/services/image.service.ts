@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
+import { Camera } from 'expo-camera';
 
 const IMAGES_SUBDIRECTORY = 'images/';
 
@@ -36,8 +37,7 @@ export async function pickImageFromGallery(): Promise<string | null> {
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: [1, 1],
+    allowsEditing: false,
     quality: 0.8,
   });
 
@@ -55,8 +55,7 @@ export async function captureImageWithCamera(): Promise<string | null> {
   }
 
   const result = await ImagePicker.launchCameraAsync({
-    allowsEditing: true,
-    aspect: [1, 1],
+    allowsEditing: false,
     quality: 0.8,
   });
 
@@ -105,5 +104,43 @@ export async function deleteImageFile(relativePath: string): Promise<void> {
     }
   } catch (error) {
     console.warn('[ImageService] Failed to delete image file:', error);
+  }
+}
+
+/**
+ * Downloads a remote image (e.g. from Open Food Facts or online lookup),
+ * optimizes it, saves it to persistent app storage, and returns the relative path.
+ */
+export async function downloadAndSaveRemoteImage(remoteUrl: string): Promise<string | null> {
+  try {
+    const tempUri = `${FileSystem.cacheDirectory}${Crypto.randomUUID()}.jpg`;
+    const downloadRes = await FileSystem.downloadAsync(remoteUrl, tempUri);
+    if (downloadRes && downloadRes.status === 200) {
+      const savedPath = await saveAndOptimizeImage(downloadRes.uri);
+      await FileSystem.deleteAsync(downloadRes.uri, { idempotent: true });
+      return savedPath;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[ImageService] Failed to download remote image:', error);
+    return null;
+  }
+}
+
+/**
+ * Scans an image file (local full URI or relative path) to identify any embedded 1D/2D barcode offline.
+ * Returns the decoded barcode string, or null if no barcode is found.
+ */
+export async function detectBarcodeFromImage(imagePathOrUri: string): Promise<string | null> {
+  try {
+    const fullUri = resolveImageUri(imagePathOrUri) || imagePathOrUri;
+    const results = await Camera.scanFromURLAsync(fullUri);
+    if (results && results.length > 0 && results[0]?.data) {
+      return results[0].data;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[ImageService] Failed to detect barcode from image:', error);
+    return null;
   }
 }
