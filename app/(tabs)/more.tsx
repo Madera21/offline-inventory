@@ -47,6 +47,32 @@ export default function MoreScreen() {
           style={styles.menuItem}
           onPress={async () => {
             try {
+              const { seedDemoData } = await import('../../src/utils/seedData');
+              const res = await seedDemoData();
+              Alert.alert(
+                'Demo Data Loaded',
+                `Populated ${res.productsCount} products across ${res.categoriesCount} categories with initial stock and sample transactions.`
+              );
+            } catch (err: any) {
+              Alert.alert('Seed Error', err?.message || 'Failed to seed demo data.');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="sparkles-outline" size={20} color="#2563EB" />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>Load Sample Demo Data</Text>
+            <Text style={styles.menuSubtitle}>Seed sample catalog, variants, and stock for testing</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={async () => {
+            try {
               const { stockRepository } = await import('../../src/db/repositories/stock.repository');
               const res = await stockRepository.reconcileAllVariants();
               Alert.alert(
