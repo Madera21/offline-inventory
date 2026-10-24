@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -29,6 +30,7 @@ import { ImageFrameEditor } from '../../src/components/ImageFrameEditor';
 import { DEFAULT_IMAGE_FRAME } from '../../src/utils/imageFrame';
 
 export default function NewProductScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{ barcode?: string; lookup?: string }>();
   const [lookingUpOnline, setLookingUpOnline] = useState(false);
@@ -283,18 +285,18 @@ export default function NewProductScreen() {
                 disabled={downloadingImage || loading}
                 onPress={() => replacePhoto(null)}
               >
-                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                <Ionicons name="trash-outline" size={18} color={colors.onAccent} />
               </TouchableOpacity>
               {analyzingImage && (
                 <View style={styles.analyzingBanner}>
-                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <ActivityIndicator size="small" color={colors.onAccent} style={{ marginRight: 6 }} />
                   <Text style={styles.analyzingText}>Detecting barcodes in photo...</Text>
                 </View>
               )}
             </View>
           ) : (
             <TouchableOpacity style={styles.photoPlaceholder} onPress={handlePickPhoto} disabled={downloadingImage || loading}>
-              <Ionicons name="camera-outline" size={32} color="#64748B" />
+              <Ionicons name="camera-outline" size={32} color={colors.muted} />
               <Text style={styles.photoPlaceholderText}>Add Product Photo</Text>
             </TouchableOpacity>
           )}
@@ -310,7 +312,7 @@ export default function NewProductScreen() {
               disabled={downloadingImage || lookingUpOnline || loading}
             >
               {downloadingImage ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.onAccent} />
               ) : (
                 <Text style={styles.autoFillBtnText}>Edit Framing</Text>
               )}
@@ -326,7 +328,7 @@ export default function NewProductScreen() {
           <TextInput
             style={styles.input}
             placeholder="e.g. San Miguel Pale Pilsen 330ml"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.muted}
             value={name}
             onChangeText={setName}
           />
@@ -363,7 +365,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. San Miguel"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={brand}
               onChangeText={setBrand}
             />
@@ -374,7 +376,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="piece, bottle, box, kg"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={unitLabel}
               onChangeText={setUnitLabel}
             />
@@ -389,7 +391,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="0.00"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               keyboardType="decimal-pad"
               value={price}
               onChangeText={setPrice}
@@ -401,7 +403,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="Optional"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               keyboardType="decimal-pad"
               value={cost}
               onChangeText={setCost}
@@ -415,7 +417,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="0"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               keyboardType="number-pad"
               value={openingStock}
               onChangeText={setOpeningStock}
@@ -427,7 +429,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="Alert limit (e.g. 5)"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               keyboardType="number-pad"
               value={lowStockThreshold}
               onChangeText={setLowStockThreshold}
@@ -443,7 +445,7 @@ export default function NewProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. BEV-001"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={sku}
               onChangeText={setSku}
             />
@@ -457,7 +459,7 @@ export default function NewProductScreen() {
                 onPress={() => setScannerOpen(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="barcode-outline" size={14} color="#0284C7" />
+                <Ionicons name="barcode-outline" size={14} color={colors.accent} />
                 <Text style={styles.scanLinkText}>Scan</Text>
               </TouchableOpacity>
             </View>
@@ -465,7 +467,7 @@ export default function NewProductScreen() {
               <TextInput
                 style={[styles.input, styles.barcodeInput]}
                 placeholder="e.g. 480001234567"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.muted}
                 value={barcode}
                 onChangeText={setBarcode}
               />
@@ -474,7 +476,7 @@ export default function NewProductScreen() {
                 onPress={() => setScannerOpen(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="camera-outline" size={20} color="#0284C7" />
+                <Ionicons name="camera-outline" size={20} color={colors.accent} />
               </TouchableOpacity>
             </View>
             {barcode.trim().length >= 6 && (
@@ -485,10 +487,10 @@ export default function NewProductScreen() {
                 activeOpacity={0.8}
               >
                 {lookingUpOnline ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={colors.onAccent} />
                 ) : (
                   <>
-                    <Ionicons name="sparkles" size={13} color="#FBBF24" style={{ marginRight: 4 }} />
+                    <Ionicons name="sparkles" size={13} color={colors.warning} style={{ marginRight: 4 }} />
                     <Text style={styles.autoFillBtnText}>Auto-Fill from Web</Text>
                   </>
                 )}
@@ -504,7 +506,7 @@ export default function NewProductScreen() {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Product description..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.muted}
             multiline
             numberOfLines={3}
             value={description}
@@ -517,7 +519,7 @@ export default function NewProductScreen() {
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Private supplier notes or remarks..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.muted}
             multiline
             numberOfLines={2}
             value={notes}
@@ -533,7 +535,7 @@ export default function NewProductScreen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <Text style={styles.saveButtonText}>Save Product</Text>
           )}
@@ -571,10 +573,10 @@ export default function NewProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   content: {
     padding: 16,
@@ -587,11 +589,11 @@ const styles = StyleSheet.create({
   photoPlaceholder: {
     width: '100%',
     height: 140,
-    borderRadius: 12,
+    borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderStyle: 'dashed',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
@@ -599,12 +601,12 @@ const styles = StyleSheet.create({
   photoPlaceholderText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   imagePreviewContainer: {
     width: '100%',
     height: 180,
-    borderRadius: 12,
+    borderRadius: 7,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -637,14 +639,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   analyzingText: {
-    color: '#FFFFFF',
+    color: '#FFF7E9',
     fontSize: 12,
     fontWeight: '600',
   },
   sectionHeader: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 16,
@@ -660,7 +662,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 6,
   },
   labelWithAction: {
@@ -677,8 +679,8 @@ const styles = StyleSheet.create({
   },
   scanLinkText: {
     fontSize: 12,
-    color: '#0284C7',
-    fontWeight: '700',
+    color: colors.accent,
+    fontWeight: '500',
   },
   barcodeInputWrapper: {
     position: 'relative',
@@ -695,14 +697,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#0F172A',
+    color: colors.ink,
   },
   textArea: {
     minHeight: 64,
@@ -716,29 +718,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginRight: 8,
   },
   catChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   catChipText: {
     fontSize: 13,
-    color: '#475569',
+    color: colors.muted,
     fontWeight: '500',
   },
   catChipTextActive: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
   autoFillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accent,
     borderRadius: 8,
     paddingVertical: 7,
     paddingHorizontal: 10,
@@ -748,12 +750,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   autoFillBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -764,8 +766,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 });

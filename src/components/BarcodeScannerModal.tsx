@@ -159,7 +159,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               <Ionicons
                 name={continuous ? 'repeat' : 'scan-outline'}
                 size={16}
-                color={continuous ? '#FFFFFF' : '#94A3B8'}
+                color={continuous ? '#FFFFFF' : '#BDB1A0'}
                 style={{ marginRight: 6 }}
               />
               <Text style={[styles.togglePillText, continuous && styles.togglePillTextActive]}>
@@ -172,7 +172,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         {/* Camera or Permission Content */}
         {!permission?.granted ? (
           <View style={styles.permissionContainer}>
-            <Ionicons name="camera-outline" size={64} color="#94A3B8" />
+            <Ionicons name="camera-outline" size={64} color="#BDB1A0" />
             <Text style={styles.permissionTitle}>Camera Access Needed</Text>
             <Text style={styles.permissionText}>
               Offline Barcode Scanning requires camera permission to detect barcodes and QR codes.
@@ -244,7 +244,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               <TextInput
                 style={styles.manualInput}
                 placeholder="Enter barcode or SKU..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#BDB1A0"
                 value={manualCode}
                 onChangeText={setManualCode}
                 autoFocus
@@ -263,7 +263,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 onPress={() => setManualMode(false)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="close" size={20} color="#94A3B8" />
+                <Ionicons name="close" size={20} color="#BDB1A0" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#231E1A',
     zIndex: 10,
   },
   headerTitleContainer: {
@@ -314,9 +314,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     paddingVertical: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#302923',
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#51463A',
   },
   togglePill: {
     flexDirection: 'row',
@@ -326,14 +326,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: '#756F63',
   },
   togglePillActive: {
-    backgroundColor: '#0284C7',
-    borderColor: '#38BDF8',
+    backgroundColor: '#A34E35',
+    borderColor: '#E5A080',
   },
   togglePillText: {
-    color: '#94A3B8',
+    color: '#BDB1A0',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 28,
     height: 28,
-    borderColor: '#38BDF8',
+    borderColor: '#E5A080',
   },
   cornerSuccess: {
     borderColor: '#10B981',
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#231E1A',
   },
   permissionTitle: {
     color: '#FFFFFF',
@@ -453,14 +453,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   permissionText: {
-    color: '#94A3B8',
+    color: '#BDB1A0',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
   grantButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#A34E35',
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 12,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     padding: 16,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#231E1A',
     zIndex: 10,
   },
   manualModeButton: {
@@ -495,17 +495,17 @@ const styles = StyleSheet.create({
   manualInput: {
     flex: 1,
     height: 44,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#302923',
     color: '#FFFFFF',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 15,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#51463A',
   },
   manualSubmitButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: '#A34E35',
     width: 44,
     height: 44,
     borderRadius: 8,
@@ -519,6 +519,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#302923',
   },
 });

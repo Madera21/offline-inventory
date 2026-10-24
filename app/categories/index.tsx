@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -17,6 +18,7 @@ import { Category, EntityStatus } from '../../src/types';
 import { EmptyState } from '../../src/components/EmptyState';
 
 export default function CategoriesScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [categories, setCategories] = useState<Category[]>([]);
   const [statusFilter, setStatusFilter] = useState<EntityStatus>('ACTIVE');
   const [refreshing, setRefreshing] = useState(false);
@@ -131,7 +133,7 @@ export default function CategoriesScreen() {
         </View>
 
         <TouchableOpacity style={styles.addButton} onPress={handleOpenAdd} activeOpacity={0.8}>
-          <Ionicons name="add" size={18} color="#FFFFFF" />
+          <Ionicons name="add" size={18} color={colors.onAccent} />
           <Text style={styles.addButtonText}>New Category</Text>
         </TouchableOpacity>
       </View>
@@ -143,7 +145,7 @@ export default function CategoriesScreen() {
         renderItem={({ item }) => (
           <View style={styles.categoryCard}>
             <View style={styles.categoryInfo}>
-              <Ionicons name="folder-outline" size={22} color="#2563EB" style={styles.folderIcon} />
+              <Ionicons name="folder-outline" size={22} color={colors.accent} style={styles.folderIcon} />
               <Text style={styles.categoryName}>{item.name}</Text>
             </View>
             <View style={styles.cardActions}>
@@ -152,7 +154,7 @@ export default function CategoriesScreen() {
                 style={styles.iconButton}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="pencil-outline" size={18} color="#64748B" />
+                <Ionicons name="pencil-outline" size={18} color={colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleToggleArchive(item)}
@@ -162,7 +164,7 @@ export default function CategoriesScreen() {
                 <Ionicons
                   name={item.status === 'ACTIVE' ? 'archive-outline' : 'refresh-outline'}
                   size={18}
-                  color={item.status === 'ACTIVE' ? '#D97706' : '#16A34A'}
+                  color={item.status === 'ACTIVE' ? colors.warning : colors.success}
                 />
               </TouchableOpacity>
             </View>
@@ -195,7 +197,7 @@ export default function CategoriesScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. Beverages, Tools, Electronics"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={categoryNameInput}
               onChangeText={setCategoryNameInput}
               autoFocus
@@ -218,23 +220,23 @@ export default function CategoriesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: colors.line,
   },
   statusToggle: {
     flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.line,
     borderRadius: 8,
     padding: 2,
   },
@@ -244,27 +246,27 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusOptionActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   statusOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   statusOptionTextActive: {
-    color: '#0F172A',
+    color: colors.ink,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
     gap: 4,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -275,12 +277,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     padding: 14,
     borderRadius: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   categoryInfo: {
     flexDirection: 'row',
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   cardActions: {
     flexDirection: 'row',
@@ -310,26 +312,26 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 7,
     padding: 20,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
     marginBottom: 16,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
     marginBottom: 20,
-    color: '#0F172A',
+    color: colors.ink,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -342,17 +344,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cancelButtonText: {
-    color: '#64748B',
+    color: colors.muted,
     fontWeight: '600',
   },
   confirmButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 8,
   },
   confirmButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
 });

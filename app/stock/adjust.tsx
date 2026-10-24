@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -20,6 +21,7 @@ import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 import { StockReasonPicker, MANUAL_STOCK_REASON } from '../../src/components/StockReasonPicker';
 
 export default function StockAdjustScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{ productId?: string; variantId?: string }>();
 
@@ -30,7 +32,7 @@ export default function StockAdjustScreen() {
 
   // Search & selector modal state
   const [search, setSearch] = useState('');
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(!params.productId);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lookingUpBarcode, setLookingUpBarcode] = useState(false);
   const scanInProgress = React.useRef(false);
@@ -181,7 +183,7 @@ export default function StockAdjustScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -189,19 +191,22 @@ export default function StockAdjustScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Target Product Selection */}
-      <Text style={styles.sectionHeader}>Target Product & Variant</Text>
-      <Text style={styles.selectorSubtitle}>How would you like to find the product?</Text>
-      <View style={styles.selectionActions}>
-        <TouchableOpacity style={styles.selectionAction} onPress={openBarcodeScanner} disabled={lookingUpBarcode || submitting}>
-          <Ionicons name="barcode-outline" size={24} color="#2563EB" />
-          <Text style={styles.selectionActionText}>Scan Barcode</Text>
+      <Text style={{ color: colors.ink, fontSize: 28, fontWeight: '500', marginBottom: 8 }}>Restock</Text>
+      <Text style={styles.selectorSubtitle}>Find a product by name, or scan its barcode.</Text>
+      <View style={[styles.selectionActions, { marginBottom: 12 }]}>
+        <TouchableOpacity style={[styles.selectionAction, { flexDirection: 'row', padding: 12 }]} onPress={openManualSearch} disabled={lookingUpBarcode || submitting}>
+          <Ionicons name="search-outline" size={20} color={colors.ink} />
+          <Text style={[styles.selectionActionText, { color: colors.ink }]}>Find by name</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.selectionAction} onPress={openManualSearch} disabled={lookingUpBarcode || submitting}>
-          <Ionicons name="search-outline" size={24} color="#2563EB" />
-          <Text style={styles.selectionActionText}>Find Manually</Text>
+        <TouchableOpacity style={[styles.selectionAction, { flexDirection: 'row', padding: 12 }]} onPress={openBarcodeScanner} disabled={lookingUpBarcode || submitting}>
+          <Ionicons name="barcode-outline" size={20} color={colors.ink} />
+          <Text style={[styles.selectionActionText, { color: colors.ink }]}>Scan barcode</Text>
         </TouchableOpacity>
       </View>
-      {lookingUpBarcode && <ActivityIndicator style={{ marginBottom: 12 }} color="#2563EB" />}
+      <TouchableOpacity onPress={() => router.push('/products/new')} style={{ paddingVertical: 12 }}>
+        <Text style={{ color: colors.accent, fontSize: 14 }}>+ Add a new product manually</Text>
+      </TouchableOpacity>
+      {lookingUpBarcode && <ActivityIndicator style={{ marginBottom: 12 }} color={colors.accent} />}
       <TouchableOpacity
         style={styles.selectorCard}
         onPress={chooseProductMethod}
@@ -216,7 +221,7 @@ export default function StockAdjustScreen() {
             {selectedVariant ? `Variant: ${selectedVariant.label}` : 'No variant selected'}
           </Text>
         </View>
-        <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={20} color="#64748B" />
+        <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={20} color={colors.muted} />
       </TouchableOpacity>
 
       {/* Inline Product/Variant Picker */}
@@ -249,7 +254,7 @@ export default function StockAdjustScreen() {
                       </Text>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={20} color="#2563EB" />
+                      <Ionicons name="checkmark-circle" size={20} color={colors.accent} />
                     )}
                   </TouchableOpacity>
                 );
@@ -280,10 +285,10 @@ export default function StockAdjustScreen() {
       <Text style={styles.sectionHeader}>Movement Type</Text>
       <View style={styles.typeGrid}>
         {[
-          { type: 'RESTOCK' as StockMovementType, label: 'Restock (+)', icon: 'add-circle-outline' as const, color: '#16A34A' },
-          { type: 'DAMAGE' as StockMovementType, label: 'Damage / Defect (−)', icon: 'remove-circle-outline' as const, color: '#DC2626' },
-          { type: 'CUSTOMER_RETURN' as StockMovementType, label: 'Return (+)', icon: 'arrow-undo-outline' as const, color: '#2563EB' },
-          { type: 'ADJUSTMENT' as StockMovementType, label: 'Manual Count', icon: 'options-outline' as const, color: '#D97706' },
+          { type: 'RESTOCK' as StockMovementType, label: 'Restock (+)', icon: 'add-circle-outline' as const, color: colors.success },
+          { type: 'DAMAGE' as StockMovementType, label: 'Damage / Defect (−)', icon: 'remove-circle-outline' as const, color: colors.danger },
+          { type: 'CUSTOMER_RETURN' as StockMovementType, label: 'Return (+)', icon: 'arrow-undo-outline' as const, color: colors.accent },
+          { type: 'ADJUSTMENT' as StockMovementType, label: 'Manual Count', icon: 'options-outline' as const, color: colors.warning },
         ].map((item) => {
           const isActive = movementType === item.type;
           return (
@@ -298,8 +303,8 @@ export default function StockAdjustScreen() {
                 }
               }}
             >
-              <Ionicons name={item.icon} size={20} color={isActive ? item.color : '#64748B'} />
-              <Text style={[styles.typeLabel, isActive && { color: item.color, fontWeight: '700' }]}>
+              <Ionicons name={item.icon} size={20} color={isActive ? item.color : colors.muted} />
+              <Text style={[styles.typeLabel, isActive && { color: item.color, fontWeight: '500' }]}>
                 {item.label}
               </Text>
             </TouchableOpacity>
@@ -321,13 +326,13 @@ export default function StockAdjustScreen() {
             disabled={submitting || (parseInt(quantityInput, 10) || 0) <= 1}
             onPress={() => setQuantityInput((value) => String(Math.max(1, (parseInt(value, 10) || 1) - 1)))}
           >
-            <Ionicons name="remove" size={22} color="#2563EB" />
+            <Ionicons name="remove" size={22} color={colors.accent} />
           </TouchableOpacity>
           <TextInput
             style={[styles.input, styles.quantityInput]}
             accessibilityLabel="Quantity"
             placeholder="1"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.muted}
             keyboardType="number-pad"
             value={quantityInput}
             onChangeText={(value) => setQuantityInput(value.replace(/[^0-9]/g, ''))}
@@ -340,7 +345,7 @@ export default function StockAdjustScreen() {
             disabled={submitting}
             onPress={() => setQuantityInput((value) => String((parseInt(value, 10) || 0) + 1))}
           >
-            <Ionicons name="add" size={22} color="#2563EB" />
+            <Ionicons name="add" size={22} color={colors.accent} />
           </TouchableOpacity>
         </View>
       </View>
@@ -365,7 +370,7 @@ export default function StockAdjustScreen() {
         activeOpacity={0.85}
       >
         {submitting ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.onAccent} />
         ) : (
           <Text style={styles.submitButtonText}>Commit Stock Adjustment</Text>
         )}
@@ -381,7 +386,7 @@ export default function StockAdjustScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,8 +399,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#EFF6FF',
+    borderColor: colors.line,
+    backgroundColor: colors.accentSoft,
   },
   quantityInput: {
     width: 90,
@@ -414,19 +419,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFFFFF',
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
   },
   selectionActionText: {
-    color: '#2563EB',
-    fontWeight: '700',
+    color: colors.accent,
+    fontWeight: '500',
     fontSize: 14,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -439,8 +444,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 16,
@@ -450,30 +455,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
   },
   selectorInfo: {
     flex: 1,
   },
   selectorTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   selectorSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   pickerBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     marginTop: 8,
     padding: 12,
   },
@@ -488,37 +493,37 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   pickerItemActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.accentSoft,
     borderRadius: 6,
   },
   pickerItemName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   pickerItemTextActive: {
-    color: '#2563EB',
+    color: colors.accent,
   },
   pickerItemSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   balanceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginTop: 12,
   },
   balanceLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
     marginBottom: 4,
   },
   balanceRow: {
@@ -528,8 +533,8 @@ const styles = StyleSheet.create({
   },
   balanceValue: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   typeGrid: {
     flexDirection: 'row',
@@ -540,22 +545,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 10,
     gap: 8,
   },
   typeOptionActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.accent,
+    backgroundColor: colors.paper,
   },
   typeLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: colors.muted,
   },
   inputGroup: {
     marginBottom: 14,
@@ -563,25 +568,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#0F172A',
+    color: colors.ink,
   },
   textArea: {
     minHeight: 70,
     textAlignVertical: 'top',
   },
   submitButton: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -591,8 +596,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 });

@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -17,6 +18,7 @@ import { MoneyText } from '../../src/components/MoneyText';
 import { formatDateTime } from '../../src/utils/dates';
 
 export default function SaleReceiptScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -69,7 +71,7 @@ export default function SaleReceiptScreen() {
   if (loading || !sale) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -145,12 +147,12 @@ export default function SaleReceiptScreen() {
             onPress={() => setVoidModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+            <Ionicons name="close-circle-outline" size={18} color={colors.danger} />
             <Text style={styles.voidBtnText}>Void This Sale</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.voidNotice}>
-            <Ionicons name="information-circle-outline" size={20} color="#DC2626" />
+            <Ionicons name="information-circle-outline" size={20} color={colors.danger} />
             <Text style={styles.voidNoticeText}>
               This sale has been voided. All deducted stock has been safely restored to inventory.
             </Text>
@@ -171,7 +173,7 @@ export default function SaleReceiptScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. Customer cancelled order / Wrong product scanned"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               multiline
               numberOfLines={3}
               value={voidReason}
@@ -192,7 +194,7 @@ export default function SaleReceiptScreen() {
                 disabled={voiding}
               >
                 {voiding ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.onAccent} />
                 ) : (
                   <Text style={styles.confirmVoidText}>Confirm Void</Text>
                 )}
@@ -205,10 +207,10 @@ export default function SaleReceiptScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -220,16 +222,16 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   receiptPaper: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 0,
   },
   receiptHeader: {
     alignItems: 'center',
@@ -237,58 +239,58 @@ const styles = StyleSheet.create({
   },
   storeName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
     letterSpacing: 1,
   },
   receiptSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   receiptNumber: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
     marginTop: 8,
   },
   dateTime: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.muted,
     marginTop: 2,
   },
   statusBadge: {
     marginTop: 10,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 7,
   },
   statusCompleted: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSoft,
   },
   statusCompletedText: {
-    color: '#15803D',
+    color: colors.success,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   statusVoided: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSoft,
   },
   statusVoidedText: {
-    color: '#B91C1C',
+    color: colors.danger,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   statusText: {},
   divider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.line,
     marginVertical: 14,
   },
   itemsHeader: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -306,17 +308,17 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   itemVariant: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   itemTotal: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   totalsSection: {
     gap: 8,
@@ -328,42 +330,42 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     fontSize: 14,
-    color: '#64748B',
+    color: colors.muted,
   },
   totalValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   discountText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#16A34A',
+    color: colors.success,
   },
   grandTotalRow: {
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: colors.line,
     marginTop: 4,
   },
   grandTotalLabel: {
     fontSize: 17,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   grandTotalValue: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   paymentMethodLabel: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
   },
   paymentMethodValue: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   actionsContainer: {
     marginTop: 20,
@@ -372,22 +374,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 12,
     gap: 8,
   },
   voidBtnText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#DC2626',
+    fontWeight: '500',
+    color: colors.danger,
   },
   voidNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerSoft,
     padding: 14,
     borderRadius: 10,
     gap: 10,
@@ -395,7 +397,7 @@ const styles = StyleSheet.create({
   voidNoticeText: {
     flex: 1,
     fontSize: 12,
-    color: '#991B1B',
+    color: colors.danger,
     lineHeight: 18,
   },
   modalOverlay: {
@@ -406,31 +408,31 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 7,
     padding: 20,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 4,
     marginBottom: 14,
   },
   modalLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -438,7 +440,7 @@ const styles = StyleSheet.create({
     minHeight: 64,
     textAlignVertical: 'top',
     marginBottom: 16,
-    color: '#0F172A',
+    color: colors.ink,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -450,18 +452,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   cancelBtnText: {
-    color: '#64748B',
+    color: colors.muted,
     fontWeight: '600',
   },
   confirmVoidBtn: {
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.danger,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 8,
   },
   confirmVoidText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: colors.onAccent,
+    fontWeight: '500',
   },
   btnDisabled: {
     opacity: 0.6,

@@ -1,3 +1,4 @@
+import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator, Text, StyleSheet, StatusBar } from 'react-native';
@@ -38,14 +39,20 @@ export default function RootLayout() {
     );
   }
 
+  return <ThemeProvider><AppNavigator /></ThemeProvider>;
+}
+
+function AppNavigator() {
+  const { colors, isDark } = useTheme();
   return (
     <>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.paper} />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: '#0F172A',
-          headerTitleStyle: { fontWeight: '700' },
+          headerStyle: { backgroundColor: colors.paper },
+          headerTintColor: colors.ink,
+          headerTitleStyle: { fontWeight: '500' },
+          contentStyle: { backgroundColor: colors.paper },
           headerShadowVisible: false,
         }}
       >
@@ -96,24 +103,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F6F1E7',
     padding: 24,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 15,
-    color: '#64748B',
+    color: '#756F63',
     fontWeight: '500',
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '500',
     color: '#DC2626',
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#475569',
+    color: '#756F63',
     textAlign: 'center',
   },
 });

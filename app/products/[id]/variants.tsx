@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -21,6 +22,7 @@ import { parseMoneyToMinor, minorToDecimalString } from '../../../src/utils/curr
 import { BarcodeScannerModal } from '../../../src/components/BarcodeScannerModal';
 
 export default function VariantsScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -118,7 +120,7 @@ export default function VariantsScreen() {
   if (loading || !product) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -134,7 +136,7 @@ export default function VariantsScreen() {
           </Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd} activeOpacity={0.8}>
-          <Ionicons name="add" size={18} color="#FFFFFF" />
+          <Ionicons name="add" size={18} color={colors.onAccent} />
           <Text style={styles.addBtnText}>Add Variant</Text>
         </TouchableOpacity>
       </View>
@@ -176,7 +178,7 @@ export default function VariantsScreen() {
                 style={styles.adjustBtn}
                 onPress={() => router.push(`/stock/adjust?productId=${product.id}&variantId=${item.id}`)}
               >
-                <Ionicons name="swap-vertical" size={14} color="#2563EB" />
+                <Ionicons name="swap-vertical" size={14} color={colors.accent} />
                 <Text style={styles.adjustBtnText}>Adjust Stock</Text>
               </TouchableOpacity>
             </View>
@@ -196,7 +198,7 @@ export default function VariantsScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. 500ml, XL, Red, 6-Pack"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={label}
               onChangeText={setLabel}
             />
@@ -207,7 +209,7 @@ export default function VariantsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="decimal-pad"
                   value={price}
                   onChangeText={setPrice}
@@ -218,7 +220,7 @@ export default function VariantsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Optional"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="decimal-pad"
                   value={cost}
                   onChangeText={setCost}
@@ -232,7 +234,7 @@ export default function VariantsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="0"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
                   value={initialStock}
                   onChangeText={setInitialStock}
@@ -243,7 +245,7 @@ export default function VariantsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="piece, bottle, kg"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   value={unitLabel}
                   onChangeText={setUnitLabel}
                 />
@@ -256,7 +258,7 @@ export default function VariantsScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Optional"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   value={sku}
                   onChangeText={setSku}
                 />
@@ -269,7 +271,7 @@ export default function VariantsScreen() {
                     onPress={() => setScannerOpen(true)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="barcode-outline" size={13} color="#0284C7" />
+                    <Ionicons name="barcode-outline" size={13} color={colors.accent} />
                     <Text style={styles.scanLinkText}>Scan</Text>
                   </TouchableOpacity>
                 </View>
@@ -277,7 +279,7 @@ export default function VariantsScreen() {
                   <TextInput
                     style={[styles.input, styles.barcodeInput]}
                     placeholder="Optional barcode"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={colors.muted}
                     value={barcode}
                     onChangeText={setBarcode}
                   />
@@ -286,7 +288,7 @@ export default function VariantsScreen() {
                     onPress={() => setScannerOpen(true)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="camera-outline" size={18} color="#0284C7" />
+                    <Ionicons name="camera-outline" size={18} color={colors.accent} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -297,7 +299,7 @@ export default function VariantsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Threshold (e.g. 5)"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.muted}
                 keyboardType="number-pad"
                 value={threshold}
                 onChangeText={setThreshold}
@@ -330,10 +332,10 @@ export default function VariantsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -345,31 +347,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: colors.line,
   },
   productName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   subtext: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   addBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -378,11 +380,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -392,12 +394,12 @@ const styles = StyleSheet.create({
   variantLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   price: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
   },
   costText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
   },
   metaRow: {
     flexDirection: 'row',
@@ -417,8 +419,8 @@ const styles = StyleSheet.create({
   },
   metaItem: {
     fontSize: 12,
-    color: '#64748B',
-    backgroundColor: '#F1F5F9',
+    color: colors.muted,
+    backgroundColor: colors.soft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -429,7 +431,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.soft,
   },
   adjustBtn: {
     flexDirection: 'row',
@@ -438,12 +440,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.accentSoft,
   },
   adjustBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   modalOverlay: {
     flex: 1,
@@ -453,21 +455,21 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 7,
     padding: 20,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
     marginBottom: 16,
   },
   modalLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 4,
   },
   labelWithAction: {
@@ -482,8 +484,8 @@ const styles = StyleSheet.create({
   },
   scanLinkText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#0284C7',
+    fontWeight: '500',
+    color: colors.accent,
   },
   barcodeInputWrapper: {
     position: 'relative',
@@ -502,13 +504,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
     marginBottom: 12,
-    color: '#0F172A',
+    color: colors.ink,
   },
   row: {
     flexDirection: 'row',
@@ -525,17 +527,17 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   cancelBtnText: {
-    color: '#64748B',
+    color: colors.muted,
     fontWeight: '600',
   },
   saveBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 8,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
 });

@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState } from 'react';
 import {
   View,
@@ -16,6 +17,7 @@ import { reportsRepository } from '../../src/db/repositories/reports.repository'
 import { formatDateTime } from '../../src/utils/dates';
 
 export default function BackupScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [loading, setLoading] = useState(false);
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
 
@@ -111,7 +113,7 @@ export default function BackupScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Warning Notice */}
       <View style={styles.warningCard}>
-        <Ionicons name="warning-outline" size={24} color="#D97706" style={styles.warningIcon} />
+        <Ionicons name="warning-outline" size={24} color={colors.warning} style={styles.warningIcon} />
         <View style={styles.warningTextContainer}>
           <Text style={styles.warningTitle}>Important: Local-Only Data</Text>
           <Text style={styles.warningDesc}>
@@ -124,8 +126,8 @@ export default function BackupScreen() {
       <Text style={styles.sectionHeader}>Create Backup</Text>
       <View style={styles.actionCard}>
         <View style={styles.actionHeader}>
-          <View style={[styles.iconCircle, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="cloud-upload-outline" size={24} color="#2563EB" />
+          <View style={[styles.iconCircle, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="cloud-upload-outline" size={24} color={colors.accent} />
           </View>
           <View style={styles.actionInfo}>
             <Text style={styles.actionTitle}>Full Data & Photos Archive</Text>
@@ -148,10 +150,10 @@ export default function BackupScreen() {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Ionicons name="download-outline" size={18} color="#FFFFFF" />
+              <Ionicons name="download-outline" size={18} color={colors.onAccent} />
               <Text style={styles.primaryBtnText}>Create & Save Backup</Text>
             </>
           )}
@@ -162,8 +164,8 @@ export default function BackupScreen() {
       <Text style={styles.sectionHeader}>Restore Data</Text>
       <View style={styles.actionCard}>
         <View style={styles.actionHeader}>
-          <View style={[styles.iconCircle, { backgroundColor: '#FEF2F2' }]}>
-            <Ionicons name="refresh-circle-outline" size={24} color="#DC2626" />
+          <View style={[styles.iconCircle, { backgroundColor: colors.dangerSoft }]}>
+            <Ionicons name="refresh-circle-outline" size={24} color={colors.danger} />
           </View>
           <View style={styles.actionInfo}>
             <Text style={styles.actionTitle}>Restore from Backup File</Text>
@@ -179,7 +181,7 @@ export default function BackupScreen() {
           disabled={loading}
           activeOpacity={0.85}
         >
-          <Ionicons name="reload-outline" size={18} color="#DC2626" />
+          <Ionicons name="reload-outline" size={18} color={colors.danger} />
           <Text style={styles.dangerBtnText}>Restore Backup</Text>
         </TouchableOpacity>
       </View>
@@ -188,8 +190,8 @@ export default function BackupScreen() {
       <Text style={styles.sectionHeader}>Portable Spreadsheet Export</Text>
       <View style={styles.actionCard}>
         <View style={styles.actionHeader}>
-          <View style={[styles.iconCircle, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="document-text-outline" size={24} color="#16A34A" />
+          <View style={[styles.iconCircle, { backgroundColor: colors.successSoft }]}>
+            <Ionicons name="document-text-outline" size={24} color={colors.success} />
           </View>
           <View style={styles.actionInfo}>
             <Text style={styles.actionTitle}>Export Products to CSV</Text>
@@ -200,7 +202,7 @@ export default function BackupScreen() {
         </View>
 
         <TouchableOpacity style={styles.secondaryBtn} onPress={handleExportCsv} activeOpacity={0.85}>
-          <Ionicons name="share-outline" size={18} color="#0F172A" />
+          <Ionicons name="share-outline" size={18} color={colors.ink} />
           <Text style={styles.secondaryBtnText}>Share Products CSV</Text>
         </TouchableOpacity>
       </View>
@@ -208,10 +210,10 @@ export default function BackupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   content: {
     padding: 16,
@@ -219,10 +221,10 @@ const styles = StyleSheet.create({
   },
   warningCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
+    backgroundColor: colors.warningSoft,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.warningSoft,
     padding: 14,
     marginBottom: 20,
     gap: 12,
@@ -235,30 +237,30 @@ const styles = StyleSheet.create({
   },
   warningTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#92400E',
+    fontWeight: '500',
+    color: colors.warning,
     marginBottom: 4,
   },
   warningDesc: {
     fontSize: 12,
-    color: '#B45309',
+    color: colors.warning,
     lineHeight: 18,
   },
   sectionHeader: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
     marginTop: 8,
   },
   actionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginBottom: 16,
   },
   actionHeader: {
@@ -279,18 +281,18 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   actionSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
     lineHeight: 18,
   },
   lastBackupText: {
     fontSize: 12,
-    color: '#16A34A',
+    color: colors.success,
     fontWeight: '600',
     marginBottom: 12,
   },
@@ -298,43 +300,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     borderRadius: 8,
     paddingVertical: 12,
     gap: 8,
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   dangerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: colors.danger,
     borderRadius: 8,
     paddingVertical: 12,
     gap: 8,
   },
   dangerBtnText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     borderRadius: 8,
     paddingVertical: 12,
     gap: 8,
   },
   secondaryBtnText: {
-    color: '#0F172A',
+    color: colors.ink,
     fontSize: 14,
     fontWeight: '600',
   },

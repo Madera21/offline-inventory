@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../../src/theme/ThemeProvider';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,6 +16,7 @@ import { productsRepository } from '../../../src/db/repositories/products.reposi
 import { Category, ProductWithDetails } from '../../../src/types';
 
 export default function EditProductScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -81,7 +83,7 @@ export default function EditProductScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -95,7 +97,7 @@ export default function EditProductScreen() {
           value={name}
           onChangeText={setName}
           placeholder="Product name"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.muted}
         />
       </View>
 
@@ -131,7 +133,7 @@ export default function EditProductScreen() {
           value={brand}
           onChangeText={setBrand}
           placeholder="Brand name"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.muted}
         />
       </View>
 
@@ -144,7 +146,7 @@ export default function EditProductScreen() {
           value={description}
           onChangeText={setDescription}
           placeholder="Description"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.muted}
         />
       </View>
 
@@ -157,7 +159,7 @@ export default function EditProductScreen() {
           value={notes}
           onChangeText={setNotes}
           placeholder="Private supplier notes"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={colors.muted}
         />
       </View>
 
@@ -168,7 +170,7 @@ export default function EditProductScreen() {
         activeOpacity={0.8}
       >
         {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.onAccent} />
         ) : (
           <Text style={styles.saveBtnText}>Save Changes</Text>
         )}
@@ -177,10 +179,10 @@ export default function EditProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -197,18 +199,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#0F172A',
+    color: colors.ink,
   },
   textArea: {
     minHeight: 80,
@@ -222,26 +224,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 18,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginRight: 8,
   },
   catChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   catChipText: {
     fontSize: 13,
-    color: '#475569',
+    color: colors.muted,
     fontWeight: '500',
   },
   catChipTextActive: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
   saveBtn: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -251,8 +253,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 });

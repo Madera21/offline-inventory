@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -27,6 +28,7 @@ import { readImageFrame } from '../../src/utils/imageFrame';
 import { StockReasonPicker, MANUAL_STOCK_REASON } from '../../src/components/StockReasonPicker';
 
 export default function ProductDetailsScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
@@ -184,7 +186,7 @@ export default function ProductDetailsScreen() {
   if (loading || !product) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -205,7 +207,7 @@ export default function ProductDetailsScreen() {
           <View>
             <FramedProductImage uri={imageUri} frame={readImageFrame(product.images[0]?.frame_json)} style={styles.heroImage} />
             <TouchableOpacity onPress={() => setEditingFrame(true)} style={{ padding: 12 }}>
-              <Text style={{ color: '#2563EB', fontWeight: '600' }}>Edit Framing</Text>
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>Edit Framing</Text>
             </TouchableOpacity>
             {editingFrame && <ImageFrameEditor uri={imageUri} initialFrame={readImageFrame(product.images[0]?.frame_json)} onClose={() => setEditingFrame(false)} onSave={async (frame) => {
               await productsRepository.updateImageFrame(product.images[0].id, JSON.stringify(frame));
@@ -214,7 +216,7 @@ export default function ProductDetailsScreen() {
           </View>
         ) : (
           <View style={styles.placeholderHero}>
-            <Ionicons name="cube-outline" size={48} color="#94A3B8" />
+            <Ionicons name="cube-outline" size={48} color={colors.muted} />
           </View>
         )}
 
@@ -253,7 +255,7 @@ export default function ProductDetailsScreen() {
           onPress={() => handleOpenAdjust(primaryVariant)}
           activeOpacity={0.8}
         >
-          <Ionicons name="swap-vertical" size={18} color="#2563EB" />
+          <Ionicons name="swap-vertical" size={18} color={colors.accent} />
           <Text style={styles.actionBtnText}>Adjust Stock</Text>
         </TouchableOpacity>
 
@@ -262,8 +264,8 @@ export default function ProductDetailsScreen() {
           onPress={() => router.push(`/products/${product.id}/edit`)}
           activeOpacity={0.8}
         >
-          <Ionicons name="pencil-outline" size={18} color="#0F172A" />
-          <Text style={[styles.actionBtnText, { color: '#0F172A' }]}>Edit Info</Text>
+          <Ionicons name="pencil-outline" size={18} color={colors.ink} />
+          <Text style={[styles.actionBtnText, { color: colors.ink }]}>Edit Info</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -274,12 +276,12 @@ export default function ProductDetailsScreen() {
           <Ionicons
             name={product.status === 'ACTIVE' ? 'archive-outline' : 'refresh-outline'}
             size={18}
-            color={product.status === 'ACTIVE' ? '#DC2626' : '#16A34A'}
+            color={product.status === 'ACTIVE' ? colors.danger : colors.success}
           />
           <Text
             style={[
               styles.actionBtnText,
-              { color: product.status === 'ACTIVE' ? '#DC2626' : '#16A34A' },
+              { color: product.status === 'ACTIVE' ? colors.danger : colors.success },
             ]}
           >
             {product.status === 'ACTIVE' ? 'Archive' : 'Restore'}
@@ -295,14 +297,14 @@ export default function ProductDetailsScreen() {
             style={styles.addVariantLink}
             onPress={() => router.push(`/products/${product.id}/variants`)}
           >
-            <Ionicons name="list-outline" size={16} color="#2563EB" />
+            <Ionicons name="list-outline" size={16} color={colors.accent} />
             <Text style={styles.addVariantText}>Manage</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addVariantLink}
             onPress={() => setVariantModalVisible(true)}
           >
-            <Ionicons name="add" size={16} color="#2563EB" />
+            <Ionicons name="add" size={16} color={colors.accent} />
             <Text style={styles.addVariantText}>Add</Text>
           </TouchableOpacity>
         </View>
@@ -331,7 +333,7 @@ export default function ProductDetailsScreen() {
             style={styles.adjustVariantBtn}
             onPress={() => handleOpenAdjust(v)}
           >
-            <Ionicons name="sync-outline" size={14} color="#2563EB" />
+            <Ionicons name="sync-outline" size={14} color={colors.accent} />
             <Text style={styles.adjustVariantBtnText}>Adjust Quantity</Text>
           </TouchableOpacity>
         </View>
@@ -398,7 +400,7 @@ export default function ProductDetailsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="e.g. 10"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               keyboardType="number-pad"
               value={adjustQuantity}
               onChangeText={setAdjustQuantity}
@@ -438,7 +440,7 @@ export default function ProductDetailsScreen() {
             <TextInput
               style={styles.modalInput}
               placeholder="e.g. Large / 1.5L / Red"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.muted}
               value={variantLabel}
               onChangeText={setVariantLabel}
             />
@@ -449,7 +451,7 @@ export default function ProductDetailsScreen() {
                 <TextInput
                   style={styles.modalInput}
                   placeholder="0.00"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="decimal-pad"
                   value={variantPrice}
                   onChangeText={setVariantPrice}
@@ -460,7 +462,7 @@ export default function ProductDetailsScreen() {
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Optional"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="decimal-pad"
                   value={variantCost}
                   onChangeText={setVariantCost}
@@ -474,7 +476,7 @@ export default function ProductDetailsScreen() {
                 <TextInput
                   style={styles.modalInput}
                   placeholder="0"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   keyboardType="number-pad"
                   value={variantStock}
                   onChangeText={setVariantStock}
@@ -485,7 +487,7 @@ export default function ProductDetailsScreen() {
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Optional"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.muted}
                   value={variantSku}
                   onChangeText={setVariantSku}
                 />
@@ -510,10 +512,10 @@ export default function ProductDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -525,10 +527,10 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     overflow: 'hidden',
     marginBottom: 16,
   },
@@ -539,7 +541,7 @@ const styles = StyleSheet.create({
   placeholderHero: {
     width: '100%',
     height: 140,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -553,7 +555,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   categoryBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.accentSoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -561,27 +563,27 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   brandText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
   },
   archivedBadge: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   archivedBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#DC2626',
+    fontWeight: '500',
+    color: colors.danger,
   },
   productName: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
     marginBottom: 10,
   },
   heroPriceRow: {
@@ -591,8 +593,8 @@ const styles = StyleSheet.create({
   },
   heroPrice: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   actionsBar: {
     flexDirection: 'row',
@@ -604,9 +606,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     borderRadius: 10,
     paddingVertical: 10,
     gap: 6,
@@ -614,7 +616,7 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -624,8 +626,8 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -637,14 +639,14 @@ const styles = StyleSheet.create({
   addVariantText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   variantCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginBottom: 10,
   },
   variantHeader: {
@@ -654,13 +656,13 @@ const styles = StyleSheet.create({
   },
   variantLabel: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   variantPrice: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   variantMeta: {
     flexDirection: 'row',
@@ -669,7 +671,7 @@ const styles = StyleSheet.create({
   },
   variantMetaText: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
   },
   adjustVariantBtn: {
     flexDirection: 'row',
@@ -681,13 +683,13 @@ const styles = StyleSheet.create({
   adjustVariantBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563EB',
+    color: colors.accent,
   },
   detailsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     paddingHorizontal: 16,
     paddingVertical: 6,
     marginTop: 8,
@@ -695,16 +697,16 @@ const styles = StyleSheet.create({
   detailRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   detailLabel: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.muted,
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.ink,
     fontWeight: '500',
   },
   modalOverlay: {
@@ -715,37 +717,37 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     width: '100%',
-    borderRadius: 16,
+    borderRadius: 7,
     padding: 20,
   },
   modalTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 4,
     marginBottom: 16,
   },
   modalLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.ink,
     marginBottom: 6,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: colors.line,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 9,
     fontSize: 15,
     marginBottom: 14,
-    color: '#0F172A',
+    color: colors.ink,
   },
   typeSelector: {
     flexDirection: 'row',
@@ -757,20 +759,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     alignItems: 'center',
   },
   typeButtonActive: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#2563EB',
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
   },
   typeButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   typeButtonTextActive: {
-    color: '#2563EB',
+    color: colors.accent,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -784,17 +786,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   modalCancelText: {
-    color: '#64748B',
+    color: colors.muted,
     fontWeight: '600',
   },
   modalConfirm: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     paddingHorizontal: 18,
     paddingVertical: 9,
     borderRadius: 8,
   },
   modalConfirmText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
 });

@@ -1,17 +1,19 @@
+import { useTheme } from '../../src/theme/ThemeProvider';
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#2563EB',
-        tabBarInactiveTintColor: '#64748B',
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E2E8F0',
-          height: 60,
+          backgroundColor: colors.paper,
+          borderTopColor: colors.line,
+          minHeight: 60,
           paddingBottom: 8,
           paddingTop: 6,
         },
@@ -20,12 +22,14 @@ export default function TabLayout() {
           fontWeight: '600',
         },
         headerStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.paper,
         },
         headerTitleStyle: {
-          fontWeight: '700',
-          color: '#0F172A',
+          fontWeight: '500',
+          color: colors.ink,
         },
+        headerTintColor: colors.ink,
+        sceneStyle: { backgroundColor: colors.paper },
         headerShadowVisible: false,
       }}
     >
@@ -33,7 +37,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          headerTitle: 'Dashboard',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color as string} />
           ),
@@ -42,8 +46,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="inventory"
         options={{
-          title: 'Inventory',
-          headerTitle: 'Inventory Catalog',
+          title: 'Stock',
+          headerTitle: 'On the shelves',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color as string} />
           ),
@@ -52,8 +56,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sell"
         options={{
-          title: 'Quick Sale',
-          headerTitle: 'Quick Checkout',
+          title: 'Sell',
+          headerTitle: 'New sale',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color as string} />
           ),

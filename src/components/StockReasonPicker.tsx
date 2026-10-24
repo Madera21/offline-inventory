@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../theme/ThemeProvider';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ export function StockReasonPicker({ movementType, selectedReason, manualReason, 
   onManualChange: (reason: string) => void;
   disabled?: boolean;
 }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [open, setOpen] = useState(false);
   const options = [...(REASONS[movementType] || []), MANUAL_STOCK_REASON];
   const label = (reason: string) => reason === MANUAL_STOCK_REASON ? 'Other / Write Manually' : reason;
@@ -32,13 +34,13 @@ export function StockReasonPicker({ movementType, selectedReason, manualReason, 
       onPress={() => setOpen(true)}
     >
       <Text style={styles.text}>{selectedReason ? label(selectedReason) : 'Select a reason...'}</Text>
-      <Ionicons name="chevron-down" size={18} color="#64748B" />
+      <Ionicons name="chevron-down" size={18} color={colors.muted} />
     </TouchableOpacity>
     {selectedReason === MANUAL_STOCK_REASON && <TextInput
       style={styles.manualInput}
       accessibilityLabel="Custom stock movement reason"
       placeholder="Write your reason..."
-      placeholderTextColor="#94A3B8"
+      placeholderTextColor={colors.muted}
       multiline
       value={manualReason}
       onChangeText={onManualChange}
@@ -57,7 +59,7 @@ export function StockReasonPicker({ movementType, selectedReason, manualReason, 
               onPress={() => { onSelect(reason); setOpen(false); }}
             >
               <Text style={styles.text}>{label(reason)}</Text>
-              <Ionicons name={reason === selectedReason ? 'radio-button-on' : 'radio-button-off'} size={22} color="#2563EB" />
+              <Ionicons name={reason === selectedReason ? 'radio-button-on' : 'radio-button-off'} size={22} color={colors.accent} />
             </TouchableOpacity>)}
           </ScrollView>
           <TouchableOpacity style={styles.cancel} onPress={() => setOpen(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
@@ -67,14 +69,14 @@ export function StockReasonPicker({ movementType, selectedReason, manualReason, 
   </View>;
 }
 
-const styles = StyleSheet.create({
-  selector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#FFFFFF' },
-  text: { flex: 1, color: '#0F172A', fontSize: 15 },
-  manualInput: { marginTop: 10, minHeight: 80, textAlignVertical: 'top', padding: 12, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8, backgroundColor: '#FFFFFF', color: '#0F172A', fontSize: 15 },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  selector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 8, backgroundColor: colors.surface },
+  text: { flex: 1, color: colors.ink, fontSize: 15 },
+  manualInput: { marginTop: 10, minHeight: 80, textAlignVertical: 'top', padding: 12, borderWidth: 1, borderColor: colors.line, borderRadius: 8, backgroundColor: colors.surface, color: colors.ink, fontSize: 15 },
   overlay: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  dialog: { maxHeight: '80%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20 },
-  title: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 12 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  dialog: { maxHeight: '80%', backgroundColor: colors.surface, borderRadius: 7, padding: 20 },
+  title: { fontSize: 18, fontWeight: '500', color: colors.ink, marginBottom: 12 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
   cancel: { alignItems: 'center', padding: 14, marginTop: 8 },
-  cancelText: { color: '#2563EB', fontWeight: '600' },
+  cancelText: { color: colors.accent, fontWeight: '600' },
 });

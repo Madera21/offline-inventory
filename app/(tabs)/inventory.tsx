@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +9,7 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
 import { categoriesRepository } from '../../src/db/repositories/categories.repository';
@@ -21,7 +22,10 @@ import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 
 export default function InventoryScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
+  const params = useLocalSearchParams<{ lowStock?: string }>();
+  const [lowStockOnly, setLowStockOnly] = useState(params.lowStock === '1');
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
@@ -30,6 +34,12 @@ export default function InventoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scannerOpen, setScannerOpen] = useState(false);
+  useEffect(() => {
+    setLowStockOnly(params.lowStock === '1');
+    if (params.lowStock === '1') {
+      setSelectedCategoryId(null); setStatusFilter('ACTIVE'); setSearch('');
+    }
+  }, [params.lowStock]);
 
   const handleBarcodeScanned = async (code: string) => {
     try {
@@ -102,6 +112,9 @@ export default function InventoryScreen() {
     setRefreshing(false);
   };
 
+  const visibleProducts = lowStockOnly ? products.filter(product => product.variants.some(variant =>
+    variant.status === 'ACTIVE' && variant.low_stock_threshold !== null && variant.stock_quantity <= variant.low_stock_threshold
+  )) : products;
   return (
     <View style={styles.container}>
       {/* Search Bar */}
@@ -115,7 +128,7 @@ export default function InventoryScreen() {
             onPress={() => setScannerOpen(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
+            <Ionicons name="barcode-outline" size={22} color={colors.onAccent} />
           </TouchableOpacity>
         </View>
       </View>
@@ -124,14 +137,17 @@ export default function InventoryScreen() {
       <View style={styles.categoriesContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
           <TouchableOpacity
-            style={[styles.chip, selectedCategoryId === null && styles.chipActive]}
-            onPress={() => setSelectedCategoryId(null)}
+            style={[styles.chip, selectedCategoryId === null && !lowStockOnly && styles.chipActive]}
+            onPress={() => { setSelectedCategoryId(null); setLowStockOnly(false); router.setParams({ lowStock: undefined }); }}
           >
-            <Text style={[styles.chipText, selectedCategoryId === null && styles.chipTextActive]}>
+            <Text style={[styles.chipText, selectedCategoryId === null && !lowStockOnly && styles.chipTextActive]}>
               All
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={[styles.chip, lowStockOnly && styles.chipActive]} onPress={() => { setLowStockOnly(!lowStockOnly); router.setParams({ lowStock: lowStockOnly ? undefined : '1' }); }} accessibilityRole="button" accessibilityState={{ selected: lowStockOnly }}>
+            <Text style={[styles.chipText, lowStockOnly && styles.chipTextActive]}>Low stock</Text>
+          </TouchableOpacity>
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
@@ -168,13 +184,16 @@ export default function InventoryScreen() {
         </View>
 
         <Text style={styles.itemCount}>
-          {products.length} {products.length === 1 ? 'item' : 'items'}
+          {visibleProducts.length} {visibleProducts.length === 1 ? 'item' : 'items'}
         </Text>
       </View>
 
+      <TouchableOpacity onPress={() => router.push('/products/new')} style={{ paddingHorizontal: 18, paddingVertical: 12 }}>
+        <Text style={{ color: colors.accent, fontSize: 14 }}>+ Add product manually</Text>
+      </TouchableOpacity>
       {/* Product List */}
       <FlatList
-        data={products}
+        data={visibleProducts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ProductCard
@@ -188,29 +207,18 @@ export default function InventoryScreen() {
           !loading ? (
             <EmptyState
               icon="cube-outline"
-              title={statusFilter === 'ARCHIVED' ? 'No Archived Products' : 'No Products Found'}
+              title={lowStockOnly ? 'No Low Stock Items' : statusFilter === 'ARCHIVED' ? 'No Archived Products' : 'No Products Found'}
               description={
-                search
+                lowStockOnly ? 'Your current products are above their stock limits.' : search
                   ? `No matching items found for "${search}".`
                   : 'Get started by creating your first product in your inventory.'
               }
-              actionLabel={statusFilter === 'ACTIVE' && !search ? 'Add Product' : undefined}
+              actionLabel={statusFilter === 'ACTIVE' && !search && !lowStockOnly ? 'Add Product' : undefined}
               onAction={() => router.push('/products/new')}
             />
           ) : undefined
         }
       />
-
-      {/* Floating Action Button */}
-      {statusFilter === 'ACTIVE' && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push('/products/new')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
 
       {/* Barcode Scanner Modal */}
       <BarcodeScannerModal
@@ -223,16 +231,16 @@ export default function InventoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   searchSection: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.paper,
   },
   searchRow: {
     flexDirection: 'row',
@@ -240,22 +248,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scanButton: {
-    backgroundColor: '#0284C7',
+    backgroundColor: colors.accent,
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0284C7',
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 0,
   },
   categoriesContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.paper,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: colors.line,
     paddingBottom: 10,
   },
   categoryChips: {
@@ -265,22 +273,22 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderRadius: 0,
+    backgroundColor: colors.paper,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
   },
   chipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   chipText: {
     fontSize: 13,
-    color: '#475569',
+    color: colors.muted,
     fontWeight: '500',
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontWeight: '600',
   },
   statusBar: {
@@ -292,7 +300,7 @@ const styles = StyleSheet.create({
   },
   statusToggle: {
     flexDirection: 'row',
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.line,
     borderRadius: 8,
     padding: 2,
   },
@@ -302,19 +310,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusOptionActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.paper,
   },
   statusOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   statusOptionTextActive: {
-    color: '#0F172A',
+    color: colors.ink,
   },
   itemCount: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.muted,
     fontWeight: '500',
   },
   listContent: {
@@ -328,13 +336,13 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563EB',
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 0,
   },
 });

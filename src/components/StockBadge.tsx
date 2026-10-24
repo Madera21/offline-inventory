@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../theme/ThemeProvider';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
@@ -12,6 +13,7 @@ export const StockBadge: React.FC<StockBadgeProps> = ({
   lowStockThreshold,
   unitLabel = 'units',
 }) => {
+  const { colors, styles } = useThemeStyles(createStyles);
   let badgeStyle = styles.inStock;
   let textStyle = styles.inStockText;
   let label = `${quantity} ${unitLabel}`;
@@ -33,7 +35,7 @@ export const StockBadge: React.FC<StockBadgeProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -45,21 +47,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inStock: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSoft,
   },
   inStockText: {
-    color: '#166534',
+    color: colors.success,
   },
   lowStock: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningSoft,
   },
   lowStockText: {
-    color: '#92400E',
+    color: colors.warning,
   },
   outOfStock: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSoft,
   },
   outOfStockText: {
-    color: '#991B1B',
+    color: colors.danger,
   },
 });

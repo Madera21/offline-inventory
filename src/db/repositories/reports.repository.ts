@@ -26,6 +26,14 @@ export interface InventoryValuationMetrics {
 }
 
 export class ReportsRepository {
+  async getCounterTotals(startDateIso: string, endDateIso: string): Promise<{ total: number; count: number }> {
+    const db = await getDatabase();
+    return await db.getFirstAsync<{ total: number; count: number }>(
+      "SELECT COALESCE(SUM(total_minor), 0) AS total, COUNT(*) AS count FROM sales WHERE status = 'COMPLETED' AND sold_at >= ? AND sold_at < ?",
+      startDateIso, endDateIso
+    ) || { total: 0, count: 0 };
+  }
+
   async getSalesReport(startDateIso?: string, endDateIso?: string): Promise<SalesReportMetrics> {
     const db = await getDatabase();
     let query = `
@@ -66,7 +74,7 @@ export class ReportsRepository {
     };
   }
 
-  async getBestSellers(limit = 5, startDateIso?: string): Promise<BestSellerItem[]> {
+  async getBestSellers(limit = 5, startDateIso?: string, availableOnly = false): Promise<BestSellerItem[]> {
     const db = await getDatabase();
     let query = `
       SELECT 
@@ -82,6 +90,10 @@ export class ReportsRepository {
       WHERE s.status = 'COMPLETED'
     `;
     const params: (string | number)[] = [];
+
+    if (availableOnly) {
+      query += " AND p.status = 'ACTIVE' AND v.status = 'ACTIVE' AND v.stock_quantity > 0";
+    }
 
     if (startDateIso) {
       query += ' AND s.sold_at >= ?';
