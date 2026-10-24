@@ -1,5 +1,6 @@
 import { ThemeColors, useThemeStyles } from '../theme/ThemeProvider';
 import React from 'react';
+import { ExpirationBadge } from './ExpirationBadge';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProductWithDetails } from '../types';
@@ -55,6 +56,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           )}
         </View>
 
+        {product.variants.filter(v => v.expiration_date).map(v => (
+          <ExpirationBadge key={v.id} date={v.expiration_date} prefix={product.has_multiple_variants ? v.label : undefined} />
+        ))}
         <View style={styles.footerRow}>
           <StockBadge
             quantity={product.total_stock}

@@ -1,4 +1,5 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import { ExpirationDateField } from '../../src/components/ExpirationDateField';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -32,6 +33,7 @@ import { DEFAULT_IMAGE_FRAME } from '../../src/utils/imageFrame';
 export default function NewProductScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
+  const [expirationDate, setExpirationDate] = useState('');
   const params = useLocalSearchParams<{ barcode?: string; lookup?: string }>();
   const [lookingUpOnline, setLookingUpOnline] = useState(false);
 
@@ -247,6 +249,7 @@ export default function NewProductScreen() {
         price_minor: priceMinor,
         cost_minor: costMinor,
         opening_stock: initialStock,
+        expiration_date: expirationDate,
         unit_label: unitLabel.trim() || 'piece',
         sku: sku.trim() || null,
         barcode: barcode.trim() || null,
@@ -436,6 +439,8 @@ export default function NewProductScreen() {
             />
           </View>
         </View>
+
+        <ExpirationDateField value={expirationDate} onChangeText={setExpirationDate} />
 
         {/* Barcode & Identifiers */}
         <Text style={styles.sectionHeader}>Identifiers (Optional)</Text>

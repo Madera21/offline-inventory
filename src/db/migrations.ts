@@ -1,5 +1,5 @@
 import { SQLiteDatabase } from 'expo-sqlite';
-import { MIGRATION_V1, MIGRATION_V2, MIGRATION_V3 } from './schema';
+import { MIGRATION_V1, MIGRATION_V2, MIGRATION_V3, MIGRATION_V4 } from './schema';
 import { getCurrentIsoTimestamp } from '../utils/dates';
 
 interface MigrationRecord {
@@ -58,6 +58,12 @@ export async function runMigrations(db: SQLiteDatabase): Promise<void> {
     await db.withTransactionAsync(async () => {
       await db.execAsync(MIGRATION_V3);
       await db.runAsync('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?);', [3, getCurrentIsoTimestamp()]);
+    });
+  }
+  if (!appliedVersions.has(4)) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(MIGRATION_V4);
+      await db.runAsync('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?);', [4, getCurrentIsoTimestamp()]);
     });
   }
 }

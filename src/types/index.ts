@@ -46,6 +46,7 @@ export interface ProductVariant {
   cost_minor: number | null;
   price_minor: number;
   low_stock_threshold: number | null;
+  expiration_date?: string | null;
   stock_quantity: number;
   status: EntityStatus;
   created_at: string;
@@ -130,6 +131,7 @@ export interface CreateProductInput {
   notes?: string | null;
   price_minor: number;
   cost_minor?: number | null;
+  expiration_date?: string | null;
   opening_stock?: number;
   unit_label?: string;
   sku?: string | null;

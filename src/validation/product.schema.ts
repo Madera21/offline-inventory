@@ -1,6 +1,15 @@
 import { z } from 'zod';
+import { normalizeExpirationDate } from '../utils/expiration';
+
+export const expirationDateSchema = z.string().nullable().optional().transform((value, ctx) => {
+  try { return normalizeExpirationDate(value); } catch (error) {
+    ctx.addIssue({ code: 'custom', message: (error as Error).message });
+    return z.NEVER;
+  }
+});
 
 export const createProductSchema = z.object({
+  expiration_date: expirationDateSchema,
   name: z.string().min(1, 'Product name is required'),
   category_id: z.string().nullable().optional(),
   brand: z.string().nullable().optional(),

@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getDatabase } from '../db/database';
+import { normalizeExpirationDate } from '../utils/expiration';
 import { CURRENT_SCHEMA_VERSION, MIGRATION_V3 } from '../db/schema';
 import { getCurrentIsoTimestamp } from '../utils/dates';
 import { ensureImagesDirectoryExists } from './image.service';
@@ -141,6 +142,10 @@ export class BackupService {
       throw new Error('Corrupted backup file: missing data tables.');
     }
 
+    // Validate dates before replacing any existing data; legacy backups omit this field.
+    for (const variant of payload.data.product_variants) {
+      variant.expiration_date = normalizeExpirationDate(variant.expiration_date);
+    }
     const db = await getDatabase();
     const baseDir = FileSystem.documentDirectory;
     await ensureImagesDirectoryExists();
@@ -181,8 +186,8 @@ export class BackupService {
       // Restore variants
       for (const v of payload.data.product_variants) {
         await db.runAsync(
-          'INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
-          [v.id, v.product_id, v.label, v.sku, v.barcode, v.unit_label, v.cost_minor, v.price_minor, v.low_stock_threshold, v.stock_quantity, v.status, v.created_at, v.updated_at]
+          'INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at, expiration_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+          [v.id, v.product_id, v.label, v.sku, v.barcode, v.unit_label, v.cost_minor, v.price_minor, v.low_stock_threshold, v.stock_quantity, v.status, v.created_at, v.updated_at, v.expiration_date]
         );
       }
 
