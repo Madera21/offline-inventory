@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../theme/ThemeProvider';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
+  const { colors, styles } = useThemeStyles(createStyles);
   const primaryVariant = product.variants[0];
   const firstImageRelPath = product.images[0]?.relative_path;
   const imageUri = resolveImageUri(firstImageRelPath);
@@ -25,7 +27,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           <FramedProductImage uri={imageUri} frame={readImageFrame(product.images[0]?.frame_json)} style={styles.image} />
         ) : (
           <View style={styles.placeholderContainer}>
-            <Ionicons name="image-outline" size={28} color="#94A3B8" />
+            <Ionicons name="image-outline" size={28} color={colors.muted} />
           </View>
         )}
       </View>
@@ -70,27 +72,27 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: colors.paper,
+    borderRadius: 0,
+    paddingVertical: 16,
+    marginBottom: 0,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 0,
   },
   imageContainer: {
     width: 68,
     height: 68,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     marginRight: 12,
   },
   image: {
@@ -115,13 +117,13 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   price: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.ink,
   },
   metaRow: {
     flexDirection: 'row',
@@ -130,19 +132,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   categoryBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   categoryText: {
     fontSize: 11,
-    color: '#475569',
+    color: colors.muted,
     fontWeight: '500',
   },
   brandText: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
   },
   footerRow: {
     flexDirection: 'row',
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
   },
   variantsNotice: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     fontStyle: 'italic',
   },
 });

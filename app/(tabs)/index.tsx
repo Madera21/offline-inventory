@@ -1,250 +1,107 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
+import { reportsRepository } from '../../src/db/repositories/reports.repository';
+import { ProductVariant, ProductWithDetails } from '../../src/types';
+import { useCart } from '../../src/store/cart.store';
 import { MoneyText } from '../../src/components/MoneyText';
+import { FramedProductImage } from '../../src/components/FramedProductImage';
+import { resolveImageUri } from '../../src/services/image.service';
+import { readImageFrame } from '../../src/utils/imageFrame';
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+
+type Recommendation = { product: ProductWithDetails; variant: ProductVariant; sold: number };
 
 export default function DashboardScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const cart = useCart();
   const [refreshing, setRefreshing] = useState(false);
-  const [summary, setSummary] = useState({
-    activeProductsCount: 0,
-    variantsCount: 0,
-    lowStockCount: 0,
-    inventoryValueMinor: 0,
-  });
-
+  const [error, setError] = useState(false);
+  const [sales, setSales] = useState({ total: 0, count: 0 });
+  const [lowStock, setLowStock] = useState(0);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const loadData = useCallback(async () => {
     try {
-      const data = await productsRepository.getDashboardSummary();
-      setSummary(data);
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err);
-    }
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      const week = new Date(); week.setDate(week.getDate() - 7);
+      const [today, best, products] = await Promise.all([
+        reportsRepository.getCounterTotals(start.toISOString(), end.toISOString()),
+        reportsRepository.getBestSellers(4, week.toISOString(), true),
+        productsRepository.getAllWithDetails({ status: 'ACTIVE' }),
+      ]);
+      const items: Recommendation[] = [];
+      best.forEach(item => {
+        const product = products.find(p => p.variants.some(v => v.id === item.variant_id));
+        const variant = product?.variants.find(v => v.id === item.variant_id && v.status === 'ACTIVE' && v.stock_quantity > 0);
+        if (product && variant) items.push({ product, variant, sold: item.total_quantity });
+      });
+      setSales(today || { total: 0, count: 0 }); setLowStock(products.filter(product => product.variants.some(variant => variant.low_stock_threshold !== null && variant.stock_quantity <= variant.low_stock_threshold)).length);
+      setRecommendations(items.slice(0, 4)); setError(false);
+    } catch (err) { console.error('Could not load counter:', err); setError(true); }
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+  useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
+  const addToSale = ({ product, variant }: Recommendation) => {
+    cart.addItem({ variant_id: variant.id, product_id: product.id, product_name: product.name,
+      variant_label: variant.label, unit_label: variant.unit_label, unit_price_minor: variant.price_minor,
+      unit_cost_minor: variant.cost_minor, max_available_stock: variant.stock_quantity });
+    router.push('/(tabs)/sell');
   };
-
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {/* Quick Actions */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionsGrid}>
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#EFF6FF' }]}
-          onPress={() => router.push('/products/new')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={26} color="#2563EB" />
-          <Text style={[styles.actionTitle, { color: '#1E40AF' }]}>Add Item</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#F0FDF4' }]}
-          onPress={() => router.push('/(tabs)/sell')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="cart" size={26} color="#16A34A" />
-          <Text style={[styles.actionTitle, { color: '#166534' }]}>Quick Sale</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#FEF3C7' }]}
-          onPress={() => router.push('/stock/adjust')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="swap-vertical" size={26} color="#D97706" />
-          <Text style={[styles.actionTitle, { color: '#92400E' }]}>Restock</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#FAF5FF' }]}
-          onPress={() => router.push('/categories')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="folder-open" size={26} color="#9333EA" />
-          <Text style={[styles.actionTitle, { color: '#6B21A8' }]}>Categories</Text>
-        </TouchableOpacity>
+  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: colors.paper }}><ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.accent} onRefresh={async () => { setRefreshing(true); await loadData(); setRefreshing(false); }} />}>
+    <View style={styles.brand}>
+      <View style={styles.monogram}><Text style={styles.monogramText}>SS</Text></View>
+      <View style={{ flex: 1 }}><Text style={styles.shop}>My sari-sari store</Text><Text style={styles.shopNote}>Your everyday store companion</Text></View>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="View low stock" onPress={() => router.push('/(tabs)/inventory?lowStock=1')} style={{ padding: 10 }}><Ionicons name="notifications-outline" size={23} color="#FFF7E9" /></TouchableOpacity>
+    </View>
+    <View style={styles.awning}>{Array.from({ length: 16 }, (_, i) => <View key={i} style={[styles.stripe, { backgroundColor: i % 2 ? '#A34E35' : '#F2DBAD' }]} />)}</View>
+    <View style={styles.counter}>
+      <Text style={styles.date}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+      <Text style={styles.heading}>Tinda, every day.</Text>
+      {error && <TouchableOpacity onPress={loadData}><Text style={styles.error}>Could not refresh your counter. Tap to retry.</Text></TouchableOpacity>}
+      <View style={styles.metrics}><View style={{ flex: 1.4 }}><Text style={styles.label}>Today's sales</Text><MoneyText amountMinor={sales.total} style={styles.value} /></View><View style={styles.transactions}><Text style={styles.label}>Transactions</Text><Text style={styles.value}>{sales.count}</Text></View></View>
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.action} onPress={() => router.push('/stock/adjust')}><Ionicons name="add-circle-outline" size={20} color={colors.ink} /><Text style={styles.actionText}>Restock</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.action} onPress={() => router.push('/products/new')}><Ionicons name="add" size={20} color={colors.ink} /><Text style={styles.actionText}>Add product</Text></TouchableOpacity>
       </View>
-
-      {/* Inventory Health Cards */}
-      <Text style={styles.sectionTitle}>Inventory Overview</Text>
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <Text style={styles.statLabel}>Active Products</Text>
-            <Ionicons name="cube-outline" size={20} color="#64748B" />
-          </View>
-          <Text style={styles.statValue}>{summary.activeProductsCount}</Text>
-          <Text style={styles.statSubtext}>{summary.variantsCount} tracked variants</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.statCard, summary.lowStockCount > 0 ? styles.statCardWarning : null]}
-          onPress={() => router.push('/(tabs)/inventory')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.statHeader}>
-            <Text style={[styles.statLabel, summary.lowStockCount > 0 ? styles.statLabelWarning : null]}>
-              Low Stock Alerts
-            </Text>
-            <Ionicons
-              name={summary.lowStockCount > 0 ? 'alert-circle' : 'checkmark-circle-outline'}
-              size={20}
-              color={summary.lowStockCount > 0 ? '#D97706' : '#16A34A'}
-            />
-          </View>
-          <Text style={[styles.statValue, summary.lowStockCount > 0 ? styles.statValueWarning : null]}>
-            {summary.lowStockCount}
-          </Text>
-          <Text style={styles.statSubtext}>Items at or below limit</Text>
-        </TouchableOpacity>
-
-        <View style={[styles.statCard, styles.statCardFull]}>
-          <View style={styles.statHeader}>
-            <Text style={styles.statLabel}>Estimated Inventory Cost Value</Text>
-            <Ionicons name="wallet-outline" size={20} color="#64748B" />
-          </View>
-          <MoneyText amountMinor={summary.inventoryValueMinor} style={styles.statValueLarge} />
-          <Text style={styles.statSubtext}>Based on items with recorded purchase cost</Text>
-        </View>
-      </View>
-
-      {/* System Status Banner */}
-      <View style={styles.offlineNotice}>
-        <Ionicons name="shield-checkmark-outline" size={20} color="#15803D" />
-        <View style={styles.offlineTextContainer}>
-          <Text style={styles.offlineTitle}>100% Offline & Private</Text>
-          <Text style={styles.offlineDesc}>
-            All database records and photos reside securely on this device.
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
-  );
+      <View style={styles.section}><Text style={styles.sectionTitle}>Your best sellers</Text><TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}><Text style={styles.label}>Browse stock →</Text></TouchableOpacity></View>
+      <Text style={styles.subtitle}>Recommended for your next sale · Last 7 days</Text>
+      <View style={styles.shelf}>{recommendations.map((item, index) => {
+        const image = item.product.images[0]; const uri = resolveImageUri(image?.relative_path);
+        return <TouchableOpacity key={item.variant.id} style={styles.product} onPress={() => addToSale(item)} accessibilityLabel={`Add ${item.product.name}, ${item.variant.label}, to sale`}>
+          <View style={styles.art}>{uri ? <FramedProductImage uri={uri} frame={readImageFrame(image?.frame_json)} style={styles.image} /> : <Ionicons name="basket-outline" size={40} color={colors.muted} />}<Text style={styles.rank}>0{index + 1}</Text></View>
+          <Text style={styles.productName} numberOfLines={2}>{item.product.name}</Text><Text style={styles.productNote}>{item.sold} sold · {item.variant.label}</Text>
+          <View style={styles.priceRow}><MoneyText amountMinor={item.variant.price_minor} style={styles.price} /><View style={styles.add}><Ionicons name="add" size={19} color={colors.ink} /></View></View>
+        </TouchableOpacity>;
+      })}</View>
+      {!recommendations.length && <View style={styles.empty}><Text style={styles.productName}>Your shelf starts here</Text><Text style={styles.subtitle}>Record sales to see your best sellers here. Add loose items and homemade goods without a barcode.</Text><TouchableOpacity onPress={() => router.push('/products/new')}><Text style={styles.link}>+ Add a product manually</Text></TouchableOpacity></View>}
+      <TouchableOpacity style={styles.warning} onPress={() => router.push('/(tabs)/inventory?lowStock=1')}><Ionicons name="alert-circle-outline" size={18} color={colors.warning} /><Text style={[styles.warningText, { flex: 1 }]}>{lowStock ? `${lowStock} items to restock` : 'Your stock is looking good'}</Text><Text style={styles.warningText}>View →</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.checkout} onPress={() => router.push('/(tabs)/sell')}><View style={{ flex: 1 }}><Text style={styles.checkoutTitle}>New sale →</Text><Text style={styles.checkoutNote}>{cart.totalQuantity ? `${cart.totalQuantity} items in your basket` : 'Pick from your shelf or scan an item'}</Text></View><MoneyText amountMinor={cart.totalMinor} style={styles.checkoutTotal} /></TouchableOpacity>
+    </View>
+  </ScrollView></View>;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  actionCard: {
-    flex: 1,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  actionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  statCardWarning: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFBEB',
-  },
-  statCardFull: {
-    width: '100%',
-  },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  statLabelWarning: {
-    color: '#B45309',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  statValueLarge: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2563EB',
-  },
-  statValueWarning: {
-    color: '#D97706',
-  },
-  statSubtext: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
-  offlineNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    padding: 14,
-    borderRadius: 12,
-    gap: 12,
-    marginTop: 8,
-  },
-  offlineTextContainer: {
-    flex: 1,
-  },
-  offlineTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  offlineDesc: {
-    fontSize: 12,
-    color: '#166534',
-    marginTop: 2,
-  },
+const serif = Platform.OS === 'ios' ? 'Georgia' : 'serif';
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.paper }, content: { paddingBottom: 28 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 18, backgroundColor: '#A34E35' },
+  monogram: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: '#EEC8AD', alignItems: 'center', justifyContent: 'center' },
+  monogramText: { color: '#FFF7E9', fontSize: 18, fontFamily: serif },
+  shop: { fontSize: 20, color: '#FFF7E9', fontFamily: serif }, shopNote: { fontSize: 11, color: '#F2D9C9', marginTop: 4 },
+  awning: { flexDirection: 'row', height: 7 }, stripe: { flex: 1 }, counter: { padding: 22 },
+  date: { color: c.muted, fontSize: 12 }, heading: { color: c.ink, fontFamily: serif, fontSize: 34, marginTop: 5, marginBottom: 18 },
+  metrics: { flexDirection: 'row', backgroundColor: c.soft, borderRadius: 8, padding: 16, marginBottom: 16 }, transactions: { flex: 1, borderLeftWidth: 1, borderColor: c.line, paddingLeft: 18 },
+  label: { fontSize: 12, color: c.muted }, value: { fontSize: 26, color: c.ink, marginTop: 7, fontVariant: ['tabular-nums'] },
+  actions: { flexDirection: 'row', gap: 10, marginBottom: 26 }, action: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, paddingVertical: 14, borderRadius: 7 }, actionText: { color: c.ink, fontWeight: '500', fontSize: 14 },
+  section: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }, sectionTitle: { fontSize: 20, color: c.ink, fontFamily: serif, flexShrink: 1 }, subtitle: { color: c.muted, fontSize: 12, lineHeight: 19, marginTop: 7, marginBottom: 12 },
+  shelf: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, product: { width: '47%', flexGrow: 1, borderBottomWidth: 2, borderColor: c.line, paddingBottom: 12, marginBottom: 2 },
+  art: { height: 104, backgroundColor: c.soft, borderRadius: 7, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: 10 }, image: { width: '100%', height: '100%' }, rank: { position: 'absolute', top: 8, left: 8, color: c.ink, backgroundColor: c.paper, padding: 3, fontSize: 11 },
+  productName: { fontSize: 15, fontWeight: '500', color: c.ink }, productNote: { color: c.muted, fontSize: 11, lineHeight: 17, marginVertical: 5 }, priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }, price: { color: c.ink, fontWeight: '500', fontSize: 16 }, add: { width: 32, height: 32, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  empty: { paddingVertical: 20 }, link: { color: c.accent, paddingVertical: 12, fontWeight: '600' }, error: { color: c.danger, marginBottom: 14 },
+  warning: { flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: c.warningSoft, padding: 14, borderRadius: 6, marginVertical: 18 }, warningText: { color: c.warning, fontSize: 12, flexShrink: 1 },
+  checkout: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 17, borderRadius: 8, backgroundColor: c.ink }, checkoutTitle: { color: c.paper, fontSize: 16, fontWeight: '500' }, checkoutNote: { color: c.paper, opacity: 0.8, fontSize: 11, marginTop: 5 }, checkoutTotal: { color: c.paper, fontSize: 19 },
 });

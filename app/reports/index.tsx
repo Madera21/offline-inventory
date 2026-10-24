@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -25,6 +26,7 @@ import { getTodayStartAndEndIso } from '../../src/utils/dates';
 type PeriodFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL';
 
 export default function ReportsScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [period, setPeriod] = useState<PeriodFilter>('TODAY');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -142,7 +144,7 @@ export default function ReportsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -171,13 +173,13 @@ export default function ReportsScreen() {
       {/* Sales Performance Grid */}
       <Text style={styles.sectionHeader}>Sales Performance</Text>
       <View style={styles.statsGrid}>
-        <View style={[styles.statCard, { borderLeftColor: '#2563EB', borderLeftWidth: 4 }]}>
+        <View style={[styles.statCard, { borderLeftColor: colors.accent, borderLeftWidth: 4 }]}>
           <Text style={styles.statLabel}>Total Sales Revenue</Text>
           <MoneyText amountMinor={salesMetrics.totalRevenueMinor} style={styles.statValueLarge} />
           <Text style={styles.statSub}>{salesMetrics.transactionCount} completed orders</Text>
         </View>
 
-        <View style={[styles.statCard, { borderLeftColor: '#16A34A', borderLeftWidth: 4 }]}>
+        <View style={[styles.statCard, { borderLeftColor: colors.success, borderLeftWidth: 4 }]}>
           <Text style={styles.statLabel}>Estimated Gross Profit</Text>
           <MoneyText amountMinor={salesMetrics.estimatedGrossProfitMinor} style={styles.statValueLargeProfit} />
           <Text style={styles.statSub}>
@@ -215,7 +217,7 @@ export default function ReportsScreen() {
         </View>
         <View style={[styles.valRow, { borderBottomWidth: 0 }]}>
           <Text style={styles.valLabel}>Low Stock Items</Text>
-          <Text style={[styles.valValue, valuation.lowStockItemsCount > 0 && { color: '#D97706', fontWeight: '700' }]}>
+          <Text style={[styles.valValue, valuation.lowStockItemsCount > 0 && { color: colors.warning, fontWeight: '500' }]}>
             {valuation.lowStockItemsCount} items
           </Text>
         </View>
@@ -247,17 +249,17 @@ export default function ReportsScreen() {
 
       {/* CSV Export Action Button */}
       <TouchableOpacity style={styles.exportBtn} onPress={handleExportCsv} activeOpacity={0.85}>
-        <Ionicons name="download-outline" size={20} color="#FFFFFF" />
+        <Ionicons name="download-outline" size={20} color={colors.onAccent} />
         <Text style={styles.exportBtnText}>Export CSV Report</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   center: {
     flex: 1,
@@ -277,27 +279,27 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     alignItems: 'center',
   },
   filterChipActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   filterText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
   },
   sectionHeader: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -311,52 +313,52 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   statCardHalf: {
     width: '48.5%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   statLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
     marginBottom: 4,
   },
   statValue: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   statValueLarge: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   statValueLargeProfit: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#16A34A',
+    fontWeight: '500',
+    color: colors.success,
   },
   statSub: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.muted,
     marginTop: 4,
   },
   valuationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginBottom: 16,
   },
   valRow: {
@@ -365,28 +367,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   valLabel: {
     fontSize: 14,
-    color: '#64748B',
+    color: colors.muted,
   },
   valValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   valValueBold: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   sellersCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     marginBottom: 20,
   },
   sellerRow: {
@@ -394,21 +396,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   rankCircle: {
     width: 24,
     height: 24,
-    borderRadius: 12,
-    backgroundColor: '#EFF6FF',
+    borderRadius: 7,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   rankText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   sellerInfo: {
     flex: 1,
@@ -416,28 +418,28 @@ const styles = StyleSheet.create({
   sellerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   sellerSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
   },
   sellerStats: {
     alignItems: 'flex-end',
   },
   sellerUnits: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   sellerRev: {
     fontSize: 12,
-    color: '#2563EB',
+    color: colors.accent,
     marginTop: 2,
   },
   noSellersText: {
     textAlign: 'center',
-    color: '#94A3B8',
+    color: colors.muted,
     paddingVertical: 20,
     fontSize: 13,
   },
@@ -445,14 +447,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 14,
     gap: 8,
   },
   exportBtnText: {
-    color: '#FFFFFF',
+    color: colors.onAccent,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '500',
   },
 });

@@ -1,3 +1,4 @@
+import { useTheme } from '../theme/ThemeProvider';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, PanResponder, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { FramedProductImage } from './FramedProductImage';
@@ -6,6 +7,7 @@ import { DEFAULT_IMAGE_FRAME, ImageFrame, imageFrameGeometry, normalizeImageFram
 export function ImageFrameEditor({ uri, initialFrame, onSave, onClose }: {
   uri: string; initialFrame: ImageFrame; onSave: (frame: ImageFrame) => Promise<void> | void; onClose: () => void;
 }) {
+  const { colors } = useTheme();
   const size = Math.min(useWindowDimensions().width - 40, 360);
   const [frame, setFrame] = useState(initialFrame);
   const [saving, setSaving] = useState(false);
@@ -25,21 +27,21 @@ export function ImageFrameEditor({ uri, initialFrame, onSave, onClose }: {
       }));
     },
   }), [size]);
-  const button = (label: string, action: () => void) => <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={action} style={{ padding: 14 }}><Text style={{ color: '#2563EB', fontWeight: '600' }}>{label}</Text></TouchableOpacity>;
+  const button = (label: string, action: () => void) => <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={action} style={{ padding: 14 }}><Text style={{ color: colors.accent, fontWeight: '600' }}>{label}</Text></TouchableOpacity>;
   return <Modal visible animationType="slide" onRequestClose={() => { if (!saving) onClose(); }}>
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 20 }}>
-      <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Edit Framing</Text>
-      <Text style={{ marginBottom: 16 }}>Zoom, then drag to choose the visible area.</Text>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.paper, padding: 20 }}>
+      <Text style={{ color: colors.ink, fontSize: 20, fontWeight: '500', marginBottom: 12 }}>Edit Framing</Text>
+      <Text style={{ color: colors.muted, marginBottom: 16 }}>Zoom, then drag to choose the visible area.</Text>
       <View pointerEvents={saving ? 'none' : 'auto'} {...pan.panHandlers}>
-        <FramedProductImage uri={uri} frame={frame} style={{ width: size, height: size, backgroundColor: '#E2E8F0' }} />
+        <FramedProductImage uri={uri} frame={frame} style={{ width: size, height: size, backgroundColor: colors.soft }} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {button('Zoom Out', () => setFrame(normalizeImageFrame({ ...frame, zoom: frame.zoom - 0.25 })))}
-        <Text>{frame.zoom.toFixed(2)}×</Text>
+        <Text style={{ color: colors.ink }}>{frame.zoom.toFixed(2)}×</Text>
         {button('Zoom In', () => setFrame(normalizeImageFrame({ ...frame, zoom: frame.zoom + 0.25 })))}
       </View>
       {button('Show Whole Image', () => setFrame(DEFAULT_IMAGE_FRAME))}
-      <Text>The full photo is kept. You can adjust this again later.</Text>
+      <Text style={{ color: colors.muted, textAlign: 'center' }}>The full photo is kept. You can adjust this again later.</Text>
       <View style={{ flexDirection: 'row', marginTop: 16 }}>
         {button('Cancel', onClose)}
         {button('Save Framing', async () => {
@@ -49,7 +51,7 @@ export function ImageFrameEditor({ uri, initialFrame, onSave, onClose }: {
           finally { setSaving(false); }
         })}
       </View>
-      {saving && <ActivityIndicator />}
+      {saving && <ActivityIndicator color={colors.accent} />}
     </View>
   </Modal>;
 }

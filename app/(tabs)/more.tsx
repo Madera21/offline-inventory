@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -5,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { deleteAllAppData } from '../../src/services/reset.service';
 
 export default function MoreScreen() {
+  const { colors, styles, appearance, setAppearance } = useThemeStyles(createStyles);
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
@@ -22,6 +24,7 @@ export default function MoreScreen() {
           setDeleting(true);
           try {
             const { failedFiles } = await deleteAllAppData();
+            await setAppearance('system');
             Alert.alert(
               failedFiles ? 'Records Deleted — File Cleanup Incomplete' : 'All Data Deleted',
               failedFiles
@@ -43,9 +46,18 @@ export default function MoreScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} pointerEvents={deleting ? 'none' : 'auto'}>
       {deleting && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
-        <ActivityIndicator color="#DC2626" />
-        <Text>Deleting app data...</Text>
+        <ActivityIndicator color={colors.danger} />
+        <Text style={{ color: colors.ink }}>Deleting app data...</Text>
       </View>}
+      <Text style={styles.sectionTitle}>Appearance</Text>
+      <View style={[styles.menuGroup, { flexDirection: 'row', padding: 5 }]}>
+        {(['system', 'light', 'dark'] as const).map(mode => <TouchableOpacity
+          key={mode} accessibilityRole="radio" accessibilityState={{ checked: appearance === mode }}
+          onPress={() => { void setAppearance(mode); }}
+          style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 6, backgroundColor: appearance === mode ? colors.ink : colors.surface }}>
+          <Text style={{ color: appearance === mode ? colors.paper : colors.muted, fontWeight: '500' }}>{mode === 'system' ? 'Use device' : mode === 'light' ? 'Light' : 'Dark'}</Text>
+        </TouchableOpacity>)}
+      </View>
       <Text style={styles.sectionTitle}>Inventory Configuration</Text>
       <View style={styles.menuGroup}>
         <TouchableOpacity
@@ -53,14 +65,14 @@ export default function MoreScreen() {
           onPress={() => router.push('/categories')}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="folder-open-outline" size={20} color="#2563EB" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="folder-open-outline" size={20} color={colors.accent} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Categories</Text>
             <Text style={styles.menuSubtitle}>Create, organize, and archive categories</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -68,14 +80,14 @@ export default function MoreScreen() {
           onPress={() => router.push('/stock/adjust')}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="swap-vertical-outline" size={20} color="#D97706" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.warningSoft }]}>
+            <Ionicons name="swap-vertical-outline" size={20} color={colors.warning} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Stock Adjustment</Text>
             <Text style={styles.menuSubtitle}>Record restocking, damage, or audit count</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
       </View>
 
@@ -97,14 +109,14 @@ export default function MoreScreen() {
           }}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#EFF6FF' }]}>
-            <Ionicons name="sparkles-outline" size={20} color="#2563EB" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="sparkles-outline" size={20} color={colors.accent} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Load Sample Demo Data</Text>
             <Text style={styles.menuSubtitle}>Seed sample catalog, variants, and stock for testing</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -123,14 +135,14 @@ export default function MoreScreen() {
           }}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#16A34A" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.successSoft }]}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.success} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Reconcile Stock Ledger</Text>
             <Text style={styles.menuSubtitle}>Audit stored balances against transaction movements</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
       </View>
 
@@ -141,14 +153,14 @@ export default function MoreScreen() {
           onPress={() => router.push('/reports')}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#F0FDF4' }]}>
-            <Ionicons name="bar-chart-outline" size={20} color="#16A34A" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.successSoft }]}>
+            <Ionicons name="bar-chart-outline" size={20} color={colors.success} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Sales & Inventory Reports</Text>
             <Text style={styles.menuSubtitle}>Daily sales, gross profit, valuation & CSV export</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -156,58 +168,40 @@ export default function MoreScreen() {
           onPress={() => router.push('/backup')}
           activeOpacity={0.7}
         >
-          <View style={[styles.menuIcon, { backgroundColor: '#FAF5FF' }]}>
-            <Ionicons name="cloud-download-outline" size={20} color="#9333EA" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="cloud-download-outline" size={20} color={colors.accent} />
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>Backup & Restore</Text>
             <Text style={styles.menuSubtitle}>Complete offline backup archive & CSV exports</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>Data Management</Text>
       <View style={styles.menuGroup}>
         <TouchableOpacity style={styles.menuItem} onPress={handleDeleteData} disabled={deleting} activeOpacity={0.7}>
-          <View style={[styles.menuIcon, { backgroundColor: '#FEF2F2' }]}>
-            <Ionicons name="trash-outline" size={20} color="#DC2626" />
+          <View style={[styles.menuIcon, { backgroundColor: colors.dangerSoft }]}>
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </View>
           <View style={styles.menuContent}>
-            <Text style={[styles.menuTitle, { color: '#DC2626' }]}>Delete All Data</Text>
+            <Text style={[styles.menuTitle, { color: colors.danger }]}>Delete All Data</Text>
             <Text style={styles.menuSubtitle}>Clear inventory, sales, photos, and local backups</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+          <Ionicons name="chevron-forward" size={18} color={colors.danger} />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>System Info</Text>
-      <View style={styles.card}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>App Version</Text>
-          <Text style={styles.infoValue}>1.0.0 (Universal Offline Core)</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Architecture</Text>
-          <Text style={styles.infoValue}>Local-first (SQLite & On-Device Storage)</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Default Currency</Text>
-          <Text style={styles.infoValue}>Philippine Peso (₱)</Text>
-        </View>
-        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-          <Text style={styles.infoLabel}>Cloud Dependency</Text>
-          <Text style={[styles.infoValue, { color: '#16A34A' }]}>None (100% Offline)</Text>
-        </View>
-      </View>
+      <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 20, fontSize: 12 }}>Offline Inventory · 1.0.0 · Philippine Peso (₱)</Text>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   content: {
     padding: 16,
@@ -215,18 +209,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
+    fontWeight: '500',
+    color: colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
     marginTop: 16,
   },
   menuGroup: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -235,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   menuIcon: {
     width: 36,
@@ -251,18 +245,18 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -271,15 +265,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.soft,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#64748B',
+    color: colors.muted,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colors.ink,
   },
 });

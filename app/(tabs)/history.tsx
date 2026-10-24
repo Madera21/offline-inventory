@@ -1,3 +1,4 @@
+import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import { MoneyText } from '../../src/components/MoneyText';
 import { EmptyState } from '../../src/components/EmptyState';
 
 export default function HistoryTabScreen() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'SALES' | 'MOVEMENTS'>('SALES');
   const [sales, setSales] = useState<Sale[]>([]);
@@ -45,8 +47,8 @@ export default function HistoryTabScreen() {
   };
 
   const getMovementIcon = (type: string, delta: number) => {
-    if (delta > 0) return { name: 'arrow-down-circle' as const, color: '#16A34A' };
-    return { name: 'arrow-up-circle' as const, color: '#DC2626' };
+    if (delta > 0) return { name: 'arrow-down-circle' as const, color: colors.success };
+    return { name: 'arrow-up-circle' as const, color: colors.danger };
   };
 
   return (
@@ -162,21 +164,21 @@ export default function HistoryTabScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.paper,
   },
   segmentedContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: colors.line,
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.soft,
     borderRadius: 8,
     padding: 3,
   },
@@ -187,36 +189,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentBtnActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 0,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.muted,
   },
   segmentTextActive: {
-    color: '#0F172A',
+    color: colors.ink,
   },
   listContent: {
     padding: 16,
     paddingBottom: 40,
   },
   saleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   saleCardVoided: {
-    backgroundColor: '#FFF5F5',
-    borderColor: '#FED7D7',
+    backgroundColor: colors.dangerSoft,
+    borderColor: colors.dangerSoft,
   },
   saleHeader: {
     flexDirection: 'row',
@@ -225,13 +227,13 @@ const styles = StyleSheet.create({
   },
   receiptNumber: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   saleTotal: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#2563EB',
+    fontWeight: '500',
+    color: colors.accent,
   },
   saleFooter: {
     flexDirection: 'row',
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
   },
   saleMeta: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
   },
   saleBadge: {
     paddingHorizontal: 8,
@@ -249,31 +251,31 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeCompleted: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSoft,
   },
   badgeTextCompleted: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#15803D',
+    fontWeight: '500',
+    color: colors.success,
   },
   badgeVoided: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSoft,
   },
   badgeTextVoided: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#B91C1C',
+    fontWeight: '500',
+    color: colors.danger,
   },
   badgeText: {},
   movementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 7,
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.line,
   },
   icon: {
     marginRight: 12,
@@ -283,24 +285,24 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '500',
+    color: colors.ink,
   },
   variantLabel: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.muted,
     marginTop: 2,
     fontWeight: '500',
   },
   reasonText: {
     fontSize: 12,
-    color: '#475569',
+    color: colors.muted,
     marginTop: 2,
     fontStyle: 'italic',
   },
   timestamp: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.muted,
     marginTop: 4,
   },
   deltaContainer: {
@@ -310,12 +312,12 @@ const styles = StyleSheet.create({
   },
   deltaText: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '500',
   },
   deltaPositive: {
-    color: '#16A34A',
+    color: colors.success,
   },
   deltaNegative: {
-    color: '#DC2626',
+    color: colors.danger,
   },
 });
