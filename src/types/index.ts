@@ -1,3 +1,5 @@
+import type { StockBatch } from '../db/batches';
+
 export type EntityStatus = 'ACTIVE' | 'ARCHIVED';
 
 export type ValueType = 'text' | 'number' | 'select';
@@ -11,7 +13,7 @@ export type StockMovementType =
   | 'ADJUSTMENT'
   | 'VOID_REVERSAL';
 
-export type PaymentMethod = 'CASH' | 'E-WALLET' | 'CARD' | 'OTHER';
+export type PaymentMethod = 'CASH' | 'E-WALLET' | 'CARD' | 'OTHER' | 'CREDIT';
 
 export type SaleStatus = 'COMPLETED' | 'VOIDED';
 
@@ -46,6 +48,9 @@ export interface ProductVariant {
   cost_minor: number | null;
   price_minor: number;
   low_stock_threshold: number | null;
+  batches?: StockBatch[];
+  pack_size?: number;
+  favorite?: number;
   expiration_date?: string | null;
   stock_quantity: number;
   status: EntityStatus;
@@ -89,6 +94,7 @@ export interface StockMovement {
 }
 
 export interface Sale {
+  customer_id?: string | null;
   id: string;
   receipt_number: string;
   sold_at: string;

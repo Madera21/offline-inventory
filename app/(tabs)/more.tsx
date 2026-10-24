@@ -1,4 +1,6 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import { useLabels } from '../../src/store/PreferencesProvider';
+import { StoreButton } from '../../src/components/StoreForm';
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,6 +10,7 @@ import { deleteAllAppData } from '../../src/services/reset.service';
 export default function MoreScreen() {
   const { colors, styles, appearance, setAppearance } = useThemeStyles(createStyles);
   const router = useRouter();
+  const { t, language, setLanguage } = useLabels();
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
 
@@ -49,6 +52,17 @@ export default function MoreScreen() {
         <ActivityIndicator color={colors.danger} />
         <Text style={{ color: colors.ink }}>Deleting app data...</Text>
       </View>}
+      <Text style={styles.sectionTitle}>Store tools</Text>
+      <View style={{ gap: 10 }}>
+        <StoreButton secondary label={t('receive')} onPress={() => router.push('/stock/receive')} />
+        <StoreButton secondary label={t('count')} onPress={() => router.push('/stock/count')} />
+        <StoreButton secondary label={t('shopping')} onPress={() => router.push('/shopping')} />
+        <StoreButton secondary label={t('credit')} onPress={() => router.push('/customers')} />
+        <StoreButton secondary label={t('closing')} onPress={() => router.push('/closing')} />
+        <StoreButton secondary label={`Language / Wika: ${language === 'en' ? 'English' : 'Filipino'}`} onPress={() => {
+          void setLanguage(language === 'en' ? 'fil' : 'en').catch(() => Alert.alert('Could not save language', 'Please try again.'));
+        }} />
+      </View>
       <Text style={styles.sectionTitle}>Appearance</Text>
       <View style={[styles.menuGroup, { flexDirection: 'row', padding: 5 }]}>
         {(['system', 'light', 'dark'] as const).map(mode => <TouchableOpacity

@@ -1,4 +1,45 @@
-export const CURRENT_SCHEMA_VERSION = 4;
+export const MIGRATION_V5 = `
+ALTER TABLE product_variants ADD COLUMN pack_size INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE product_variants ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sales ADD COLUMN customer_id TEXT REFERENCES customers(id);
+CREATE TABLE IF NOT EXISTS customers (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS credit_entries (
+  id TEXT PRIMARY KEY, customer_id TEXT NOT NULL REFERENCES customers(id), sale_id TEXT REFERENCES sales(id),
+  amount_minor INTEGER NOT NULL, payment_method TEXT NOT NULL, note TEXT, occurred_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS expenses (
+  id TEXT PRIMARY KEY, description TEXT NOT NULL, amount_minor INTEGER NOT NULL CHECK(amount_minor > 0),
+  payment_method TEXT NOT NULL, occurred_at TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'OPERATING'
+);
+CREATE TABLE IF NOT EXISTS stock_batches (
+  id TEXT PRIMARY KEY, variant_id TEXT NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK(quantity >= 0), expiration_date TEXT, received_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sale_batch_allocations (
+  sale_item_id TEXT NOT NULL REFERENCES sale_items(id) ON DELETE CASCADE,
+  batch_id TEXT NOT NULL REFERENCES stock_batches(id), quantity INTEGER NOT NULL CHECK(quantity > 0),
+  PRIMARY KEY(sale_item_id, batch_id)
+);
+CREATE TABLE IF NOT EXISTS shopping_list (
+  variant_id TEXT PRIMARY KEY REFERENCES product_variants(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK(quantity > 0), checked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS deliveries (
+  id TEXT PRIMARY KEY, supplier TEXT, total_cost_minor INTEGER NOT NULL, received_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS delivery_items (
+  id TEXT PRIMARY KEY, delivery_id TEXT NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+  variant_id TEXT NOT NULL REFERENCES product_variants(id), quantity INTEGER NOT NULL,
+  unit_cost_minor INTEGER, batch_id TEXT REFERENCES stock_batches(id)
+);
+CREATE INDEX IF NOT EXISTS idx_batches_variant ON stock_batches(variant_id);
+CREATE INDEX IF NOT EXISTS idx_credit_customer ON credit_entries(customer_id);
+INSERT INTO stock_batches (id, variant_id, quantity, expiration_date, received_at)
+  SELECT 'legacy-' || id, id, stock_quantity, expiration_date, created_at FROM product_variants WHERE stock_quantity > 0;
+INSERT OR IGNORE INTO app_settings VALUES ('language', 'en');
+INSERT OR IGNORE INTO app_settings VALUES ('backup_reminders', 'true');
+`;
+export const CURRENT_SCHEMA_VERSION = 5;
 export const MIGRATION_V4 = 'ALTER TABLE product_variants ADD COLUMN expiration_date TEXT;';
 // Triggers preserve existing duplicates while preventing new ones, including archived records.
 export const MIGRATION_V3 = `
