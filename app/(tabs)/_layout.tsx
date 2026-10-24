@@ -1,3 +1,4 @@
+import { useLabels } from '../../src/store/PreferencesProvider';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import React from 'react';
 import { Tabs } from 'expo-router';
@@ -5,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const { t } = useLabels();
   return (
     <Tabs
       screenOptions={{
@@ -36,7 +38,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('home'),
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color as string} />
@@ -46,8 +48,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="inventory"
         options={{
-          title: 'Stock',
-          headerTitle: 'On the shelves',
+          title: t('stock'),
+          headerTitle: t('stock'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cube-outline" size={size} color={color as string} />
           ),
@@ -56,8 +58,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sell"
         options={{
-          title: 'Sell',
-          headerTitle: 'New sale',
+          title: t('sell'),
+          headerTitle: t('newSale'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color as string} />
           ),
@@ -66,7 +68,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
+          title: t('history'),
           headerTitle: 'Transaction History',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" size={size} color={color as string} />
@@ -76,7 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="more"
         options={{
-          title: 'More',
+          title: t('more'),
           headerTitle: 'More & Settings',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="ellipsis-horizontal-circle-outline" size={size} color={color as string} />

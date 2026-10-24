@@ -31,8 +31,11 @@ export function expirationStatus(value?: string | null, now = new Date()): Expir
   return days < 0 ? 'expired' : days === 0 ? 'today' : days <= 30 ? 'soon' : 'future';
 }
 
-export function matchesExpirationFilter(variant: { expiration_date?: string | null; stock_quantity: number; status: string }, filter: ExpirationFilter, now = new Date()): boolean {
+export function matchesExpirationFilter(variant: { expiration_date?: string | null; stock_quantity: number; status: string; batches?: { quantity: number; expiration_date: string | null }[] }, filter: ExpirationFilter, now = new Date()): boolean {
   if (variant.status !== 'ACTIVE' || variant.stock_quantity <= 0) return false;
-  const status = expirationStatus(variant.expiration_date, now);
-  return filter === 'expired' ? status === 'expired' : status === 'today' || status === 'soon';
+  const dates = variant.batches ? variant.batches.filter(batch => batch.quantity > 0).map(batch => batch.expiration_date) : [variant.expiration_date];
+  return dates.some(date => {
+    const status = expirationStatus(date, now);
+    return filter === 'expired' ? status === 'expired' : status === 'today' || status === 'soon';
+  });
 }

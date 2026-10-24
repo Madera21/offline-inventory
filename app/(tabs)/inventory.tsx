@@ -1,3 +1,4 @@
+import { useLabels } from '../../src/store/PreferencesProvider';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { ExpirationFilter, matchesExpirationFilter } from '../../src/utils/expiration';
 import { useLocalDate } from '../../src/utils/useLocalDate';
@@ -26,9 +27,11 @@ import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.s
 export default function InventoryScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
+  const { t } = useLabels();
   const now = useLocalDate();
   const [expirationFilter, setExpirationFilter] = useState<ExpirationFilter | null>(null);
-  const params = useLocalSearchParams<{ lowStock?: string }>();
+  const params = useLocalSearchParams<{ lowStock?: string; expiration?: 'soon' | 'expired' }>();
+  useEffect(() => { setExpirationFilter(params.expiration === 'soon' || params.expiration === 'expired' ? params.expiration : null); }, [params.expiration]);
   const [lowStockOnly, setLowStockOnly] = useState(params.lowStock === '1');
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -145,21 +148,21 @@ export default function InventoryScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
           <TouchableOpacity
             style={[styles.chip, selectedCategoryId === null && !lowStockOnly && !expirationFilter && styles.chipActive]}
-            onPress={() => { setExpirationFilter(null); setSelectedCategoryId(null); setLowStockOnly(false); router.setParams({ lowStock: undefined }); }}
+            onPress={() => { setExpirationFilter(null); setSelectedCategoryId(null); setLowStockOnly(false); router.setParams({ lowStock: undefined, expiration: undefined }); }}
           >
             <Text style={[styles.chipText, selectedCategoryId === null && !lowStockOnly && !expirationFilter && styles.chipTextActive]}>
-              All
+              {t('all')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.chip, lowStockOnly && styles.chipActive]} onPress={() => { setLowStockOnly(!lowStockOnly); router.setParams({ lowStock: lowStockOnly ? undefined : '1' }); }} accessibilityRole="button" accessibilityState={{ selected: lowStockOnly }}>
-            <Text style={[styles.chipText, lowStockOnly && styles.chipTextActive]}>Low stock</Text>
+            <Text style={[styles.chipText, lowStockOnly && styles.chipTextActive]}>{t('lowStock')}</Text>
           </TouchableOpacity>
           {(['soon', 'expired'] as const).map(filter => (
             <TouchableOpacity key={filter} accessibilityRole="button" accessibilityState={{ selected: expirationFilter === filter }}
               style={[styles.chip, expirationFilter === filter && styles.chipActive]}
               onPress={() => setExpirationFilter(expirationFilter === filter ? null : filter)}>
-              <Text style={[styles.chipText, expirationFilter === filter && styles.chipTextActive]}>{filter === 'soon' ? 'Expiring soon' : 'Expired'}</Text>
+              <Text style={[styles.chipText, expirationFilter === filter && styles.chipTextActive]}>{filter === 'soon' ? t('soon') : t('expired')}</Text>
             </TouchableOpacity>
           ))}
           {categories.map((cat) => (

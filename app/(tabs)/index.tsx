@@ -1,3 +1,5 @@
+import { StoreAttention } from '../../src/components/StoreAttention';
+import { useLabels } from '../../src/store/PreferencesProvider';
 import React, { useCallback, useState } from 'react';
 import { Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -19,6 +21,7 @@ export default function DashboardScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useLabels();
   const cart = useCart();
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -65,9 +68,10 @@ export default function DashboardScreen() {
       {error && <TouchableOpacity onPress={loadData}><Text style={styles.error}>Could not refresh your counter. Tap to retry.</Text></TouchableOpacity>}
       <View style={styles.metrics}><View style={{ flex: 1.4 }}><Text style={styles.label}>Today's sales</Text><MoneyText amountMinor={sales.total} style={styles.value} /></View><View style={styles.transactions}><Text style={styles.label}>Transactions</Text><Text style={styles.value}>{sales.count}</Text></View></View>
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.action} onPress={() => router.push('/stock/adjust')}><Ionicons name="add-circle-outline" size={20} color={colors.ink} /><Text style={styles.actionText}>Restock</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.action} onPress={() => router.push('/products/new')}><Ionicons name="add" size={20} color={colors.ink} /><Text style={styles.actionText}>Add product</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.action} onPress={() => router.push('/stock/receive')}><Ionicons name="add-circle-outline" size={20} color={colors.ink} /><Text style={styles.actionText}>{t('receive')}</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.action} onPress={() => router.push('/products/new')}><Ionicons name="add" size={20} color={colors.ink} /><Text style={styles.actionText}>{t('addProduct')}</Text></TouchableOpacity>
       </View>
+      <StoreAttention />
       <View style={styles.section}><Text style={styles.sectionTitle}>Your best sellers</Text><TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}><Text style={styles.label}>Browse stock →</Text></TouchableOpacity></View>
       <Text style={styles.subtitle}>Recommended for your next sale · Last 7 days</Text>
       <View style={styles.shelf}>{recommendations.map((item, index) => {

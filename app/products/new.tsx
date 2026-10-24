@@ -1,5 +1,6 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../src/components/ExpirationDateField';
+import { useLabels } from '../../src/store/PreferencesProvider';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -25,6 +26,7 @@ import { BarcodeScannerModal } from '../../src/components/BarcodeScannerModal';
 import { parseMoneyToMinor } from '../../src/utils/currency';
 import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.service';
 import { downloadAndSaveRemoteImage } from '../../src/services/image.service';
+import { wholeQuantity } from '../../src/utils/quantities';
 import { Category } from '../../src/types';
 import { FramedProductImage } from '../../src/components/FramedProductImage';
 import { ImageFrameEditor } from '../../src/components/ImageFrameEditor';
@@ -34,6 +36,8 @@ export default function NewProductScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
   const [expirationDate, setExpirationDate] = useState('');
+  const [moreDetails, setMoreDetails] = useState(false);
+  const { t } = useLabels();
   const params = useLocalSearchParams<{ barcode?: string; lookup?: string }>();
   const [lookingUpOnline, setLookingUpOnline] = useState(false);
 
@@ -234,7 +238,9 @@ export default function NewProductScreen() {
     }
 
     const costMinor = cost.trim() ? parseMoneyToMinor(cost) : null;
-    const initialStock = parseInt(openingStock, 10) || 0;
+    let initialStock: number;
+    try { initialStock = wholeQuantity(openingStock || '0', true); }
+    catch (error: any) { Alert.alert('Starting quantity', error.message); return; }
     const lowStock = lowStockThreshold.trim() ? parseInt(lowStockThreshold, 10) : null;
 
     saveInProgress.current = true;
@@ -327,7 +333,7 @@ export default function NewProductScreen() {
         {/* Basic Info */}
         <Text style={styles.sectionHeader}>Basic Information</Text>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Product Name *</Text>
+          <Text style={styles.label}>{t('productName')} *</Text>
           <TextInput
             style={styles.input}
             placeholder="e.g. San Miguel Pale Pilsen 330ml"
@@ -337,6 +343,27 @@ export default function NewProductScreen() {
           />
         </View>
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>{t('price')} (₱) *</Text>
+          <TextInput accessibilityLabel="Selling price" style={styles.input} keyboardType="decimal-pad" value={price} onChangeText={setPrice} placeholder="0.00" placeholderTextColor={colors.muted} />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>{t('startingStock')}</Text>
+          <TextInput accessibilityLabel="Starting quantity" style={styles.input} keyboardType="number-pad" value={openingStock} onChangeText={setOpeningStock} />
+        </View>
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: moreDetails }} style={styles.autoFillBtn} onPress={() => setMoreDetails(!moreDetails)}>
+          <Text style={styles.autoFillBtnText}>{moreDetails ? '−' : '+'} {t('details')}</Text>
+        </TouchableOpacity>
+        {(moreDetails || params.barcode) && <>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>{t('cost')} (₱)</Text>
+          <TextInput style={styles.input} keyboardType="decimal-pad" value={cost} onChangeText={setCost} />
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Low stock alert at</Text>
+          <TextInput style={styles.input} keyboardType="number-pad" value={lowStockThreshold} onChangeText={setLowStockThreshold} />
+        </View>
+        <ExpirationDateField value={expirationDate} onChangeText={setExpirationDate} />
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPicker}>
@@ -385,62 +412,6 @@ export default function NewProductScreen() {
             />
           </View>
         </View>
-
-        {/* Pricing & Stock */}
-        <Text style={styles.sectionHeader}>Pricing & Inventory</Text>
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Selling Price (₱) *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              placeholderTextColor={colors.muted}
-              keyboardType="decimal-pad"
-              value={price}
-              onChangeText={setPrice}
-            />
-          </View>
-
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Purchase Cost (₱)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Optional"
-              placeholderTextColor={colors.muted}
-              keyboardType="decimal-pad"
-              value={cost}
-              onChangeText={setCost}
-            />
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Opening Stock</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              keyboardType="number-pad"
-              value={openingStock}
-              onChangeText={setOpeningStock}
-            />
-          </View>
-
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Low Stock Limit</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Alert limit (e.g. 5)"
-              placeholderTextColor={colors.muted}
-              keyboardType="number-pad"
-              value={lowStockThreshold}
-              onChangeText={setLowStockThreshold}
-            />
-          </View>
-        </View>
-
-        <ExpirationDateField value={expirationDate} onChangeText={setExpirationDate} />
 
         {/* Barcode & Identifiers */}
         <Text style={styles.sectionHeader}>Identifiers (Optional)</Text>
@@ -532,6 +503,7 @@ export default function NewProductScreen() {
           />
         </View>
 
+        </>}
         {/* Submit Button */}
         <TouchableOpacity
           style={[styles.saveButton, (loading || lookingUpOnline || downloadingImage) && styles.saveButtonDisabled]}
