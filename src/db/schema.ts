@@ -1,4 +1,5 @@
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
+export const MIGRATION_V4 = 'ALTER TABLE product_variants ADD COLUMN expiration_date TEXT;';
 // Triggers preserve existing duplicates while preventing new ones, including archived records.
 export const MIGRATION_V3 = `
 CREATE TRIGGER IF NOT EXISTS prevent_duplicate_barcode_insert

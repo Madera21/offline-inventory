@@ -1,10 +1,14 @@
 import { ThemeColors, useThemeStyles } from '../../../src/theme/ThemeProvider';
+import { ExpirationDateField } from '../../../src/components/ExpirationDateField';
+import { ExpirationBadge } from '../../../src/components/ExpirationBadge';
+import { ExpirationDateEditor } from '../../../src/components/ExpirationDateEditor';
 import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -25,6 +29,7 @@ export default function VariantsScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [expirationDate, setExpirationDate] = useState('');
 
   const [product, setProduct] = useState<ProductWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +84,7 @@ export default function VariantsScreen() {
     setSku('');
     setBarcode('');
     setThreshold('');
+    setExpirationDate('');
     setModalVisible(true);
   };
 
@@ -105,6 +111,7 @@ export default function VariantsScreen() {
         price_minor: priceMinor,
         cost_minor: costMinor,
         initial_stock: initialQty,
+        expiration_date: expirationDate,
         sku: sku.trim() || null,
         barcode: barcode.trim() || null,
         low_stock_threshold: lowStock,
@@ -165,6 +172,8 @@ export default function VariantsScreen() {
               )}
             </View>
 
+            <ExpirationBadge date={item.expiration_date} />
+            <ExpirationDateEditor variant={item} onSaved={loadData} />
             <View style={styles.metaRow}>
               {item.sku && <Text style={styles.metaItem}>SKU: {item.sku}</Text>}
               {item.barcode && <Text style={styles.metaItem}>Barcode: {item.barcode}</Text>}
@@ -191,8 +200,9 @@ export default function VariantsScreen() {
       {/* Add Variant Modal */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={[styles.modalContent, { flexGrow: 0, maxHeight: '90%' }]}>
             <Text style={styles.modalTitle}>Add Stock-Bearing Variant</Text>
+            <ExpirationDateField value={expirationDate} onChangeText={setExpirationDate} />
 
             <Text style={styles.modalLabel}>Variant Option / Label *</Text>
             <TextInput
@@ -317,7 +327,7 @@ export default function VariantsScreen() {
                 <Text style={styles.saveBtnText}>Save Variant</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 

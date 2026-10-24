@@ -1,4 +1,6 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import { ExpirationFilter, matchesExpirationFilter } from '../../src/utils/expiration';
+import { useLocalDate } from '../../src/utils/useLocalDate';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -24,6 +26,8 @@ import { lookupProductByBarcodeOnline } from '../../src/services/productLookup.s
 export default function InventoryScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
+  const now = useLocalDate();
+  const [expirationFilter, setExpirationFilter] = useState<ExpirationFilter | null>(null);
   const params = useLocalSearchParams<{ lowStock?: string }>();
   const [lowStockOnly, setLowStockOnly] = useState(params.lowStock === '1');
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
@@ -37,6 +41,7 @@ export default function InventoryScreen() {
   useEffect(() => {
     setLowStockOnly(params.lowStock === '1');
     if (params.lowStock === '1') {
+      setExpirationFilter(null);
       setSelectedCategoryId(null); setStatusFilter('ACTIVE'); setSearch('');
     }
   }, [params.lowStock]);
@@ -112,9 +117,11 @@ export default function InventoryScreen() {
     setRefreshing(false);
   };
 
-  const visibleProducts = lowStockOnly ? products.filter(product => product.variants.some(variant =>
-    variant.status === 'ACTIVE' && variant.low_stock_threshold !== null && variant.stock_quantity <= variant.low_stock_threshold
-  )) : products;
+  const visibleProducts = products.filter(product => {
+    const lowStockMatches = !lowStockOnly || product.variants.some(variant =>
+      variant.status === 'ACTIVE' && variant.low_stock_threshold !== null && variant.stock_quantity <= variant.low_stock_threshold);
+    return lowStockMatches && (!expirationFilter || product.variants.some(variant => matchesExpirationFilter(variant, expirationFilter, now)));
+  });
   return (
     <View style={styles.container}>
       {/* Search Bar */}
@@ -137,10 +144,10 @@ export default function InventoryScreen() {
       <View style={styles.categoriesContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
           <TouchableOpacity
-            style={[styles.chip, selectedCategoryId === null && !lowStockOnly && styles.chipActive]}
-            onPress={() => { setSelectedCategoryId(null); setLowStockOnly(false); router.setParams({ lowStock: undefined }); }}
+            style={[styles.chip, selectedCategoryId === null && !lowStockOnly && !expirationFilter && styles.chipActive]}
+            onPress={() => { setExpirationFilter(null); setSelectedCategoryId(null); setLowStockOnly(false); router.setParams({ lowStock: undefined }); }}
           >
-            <Text style={[styles.chipText, selectedCategoryId === null && !lowStockOnly && styles.chipTextActive]}>
+            <Text style={[styles.chipText, selectedCategoryId === null && !lowStockOnly && !expirationFilter && styles.chipTextActive]}>
               All
             </Text>
           </TouchableOpacity>
@@ -148,6 +155,13 @@ export default function InventoryScreen() {
           <TouchableOpacity style={[styles.chip, lowStockOnly && styles.chipActive]} onPress={() => { setLowStockOnly(!lowStockOnly); router.setParams({ lowStock: lowStockOnly ? undefined : '1' }); }} accessibilityRole="button" accessibilityState={{ selected: lowStockOnly }}>
             <Text style={[styles.chipText, lowStockOnly && styles.chipTextActive]}>Low stock</Text>
           </TouchableOpacity>
+          {(['soon', 'expired'] as const).map(filter => (
+            <TouchableOpacity key={filter} accessibilityRole="button" accessibilityState={{ selected: expirationFilter === filter }}
+              style={[styles.chip, expirationFilter === filter && styles.chipActive]}
+              onPress={() => setExpirationFilter(expirationFilter === filter ? null : filter)}>
+              <Text style={[styles.chipText, expirationFilter === filter && styles.chipTextActive]}>{filter === 'soon' ? 'Expiring soon' : 'Expired'}</Text>
+            </TouchableOpacity>
+          ))}
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
@@ -207,13 +221,13 @@ export default function InventoryScreen() {
           !loading ? (
             <EmptyState
               icon="cube-outline"
-              title={lowStockOnly ? 'No Low Stock Items' : statusFilter === 'ARCHIVED' ? 'No Archived Products' : 'No Products Found'}
+              title={expirationFilter ? 'No Matching Expiration Dates' : lowStockOnly ? 'No Low Stock Items' : statusFilter === 'ARCHIVED' ? 'No Archived Products' : 'No Products Found'}
               description={
-                lowStockOnly ? 'Your current products are above their stock limits.' : search
+                expirationFilter ? 'No stocked items match this expiration filter and your other filters.' : lowStockOnly ? 'Your current products are above their stock limits.' : search
                   ? `No matching items found for "${search}".`
                   : 'Get started by creating your first product in your inventory.'
               }
-              actionLabel={statusFilter === 'ACTIVE' && !search && !lowStockOnly ? 'Add Product' : undefined}
+              actionLabel={statusFilter === 'ACTIVE' && !search && !lowStockOnly && !expirationFilter ? 'Add Product' : undefined}
               onAction={() => router.push('/products/new')}
             />
           ) : undefined

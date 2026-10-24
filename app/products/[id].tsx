@@ -1,4 +1,7 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import { ExpirationDateField } from '../../src/components/ExpirationDateField';
+import { ExpirationBadge } from '../../src/components/ExpirationBadge';
+import { ExpirationDateEditor } from '../../src/components/ExpirationDateEditor';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -31,6 +34,7 @@ export default function ProductDetailsScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [variantExpirationDate, setVariantExpirationDate] = useState('');
 
   const [product, setProduct] = useState<ProductWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,6 +142,7 @@ export default function ProductDetailsScreen() {
         price_minor: priceMinor,
         cost_minor: costMinor,
         initial_stock: initialStock,
+        expiration_date: variantExpirationDate,
         sku: variantSku.trim() || null,
       });
 
@@ -147,6 +152,7 @@ export default function ProductDetailsScreen() {
       setVariantCost('');
       setVariantStock('0');
       setVariantSku('');
+      setVariantExpirationDate('');
       await loadProduct();
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to add variant.');
@@ -317,6 +323,8 @@ export default function ProductDetailsScreen() {
             <MoneyText amountMinor={v.price_minor} style={styles.variantPrice} />
           </View>
 
+          <ExpirationBadge date={v.expiration_date} />
+          <ExpirationDateEditor variant={v} onSaved={loadProduct} />
           <View style={styles.variantMeta}>
             <Text style={styles.variantMetaText}>
               Stock: {v.stock_quantity} {v.unit_label}
@@ -433,8 +441,9 @@ export default function ProductDetailsScreen() {
       {/* Add Variant Modal */}
       <Modal visible={variantModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={[styles.modalContent, { flexGrow: 0, maxHeight: '90%' }]}>
             <Text style={styles.modalTitle}>Add Product Variant</Text>
+            <ExpirationDateField value={variantExpirationDate} onChangeText={setVariantExpirationDate} />
 
             <Text style={styles.modalLabel}>Variant Label *</Text>
             <TextInput
@@ -505,7 +514,7 @@ export default function ProductDetailsScreen() {
                 <Text style={styles.modalConfirmText}>Add Variant</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>

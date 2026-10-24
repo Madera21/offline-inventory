@@ -1,4 +1,5 @@
 import * as Crypto from 'expo-crypto';
+import { normalizeExpirationDate } from '../../utils/expiration';
 import { getDatabase } from '../database';
 import {
   Product,
@@ -216,6 +217,7 @@ export class ProductsRepository {
     };
 
     const openingStock = input.opening_stock ?? 0;
+    const expirationDate = normalizeExpirationDate(input.expiration_date);
 
     const defaultVariant: ProductVariant = {
       id: defaultVariantId,
@@ -227,6 +229,7 @@ export class ProductsRepository {
       cost_minor: input.cost_minor !== undefined ? input.cost_minor : null,
       price_minor: input.price_minor,
       low_stock_threshold: input.low_stock_threshold !== undefined ? input.low_stock_threshold : null,
+      expiration_date: expirationDate,
       stock_quantity: 0,
       status: 'ACTIVE',
       created_at: now,
@@ -256,8 +259,8 @@ export class ProductsRepository {
 
       // 2. Insert default variant
       await db.runAsync(
-        `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at, expiration_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           defaultVariant.id,
           defaultVariant.product_id,
@@ -272,6 +275,7 @@ export class ProductsRepository {
           defaultVariant.status,
           defaultVariant.created_at,
           defaultVariant.updated_at,
+          expirationDate,
         ]
       );
 
@@ -363,6 +367,7 @@ export class ProductsRepository {
       price_minor: number;
       cost_minor?: number | null;
       low_stock_threshold?: number | null;
+      expiration_date?: string | null;
       initial_stock?: number;
     }
   ): Promise<ProductVariant> {
@@ -370,6 +375,7 @@ export class ProductsRepository {
     await this.assertBarcodeAvailable(variantData.barcode);
     const now = getCurrentIsoTimestamp();
     const variantId = Crypto.randomUUID();
+    const expirationDate = normalizeExpirationDate(variantData.expiration_date);
 
     const variant: ProductVariant = {
       id: variantId,
@@ -381,6 +387,7 @@ export class ProductsRepository {
       cost_minor: variantData.cost_minor !== undefined ? variantData.cost_minor : null,
       price_minor: variantData.price_minor,
       low_stock_threshold: variantData.low_stock_threshold !== undefined ? variantData.low_stock_threshold : null,
+      expiration_date: expirationDate,
       stock_quantity: 0,
       status: 'ACTIVE',
       created_at: now,
@@ -388,8 +395,8 @@ export class ProductsRepository {
     };
 
     await db.runAsync(
-      `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at, expiration_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       [
         variant.id,
         variant.product_id,
@@ -404,6 +411,7 @@ export class ProductsRepository {
         variant.status,
         variant.created_at,
         variant.updated_at,
+        expirationDate,
       ]
     );
 
@@ -418,6 +426,13 @@ export class ProductsRepository {
     }
 
     return variant;
+  }
+
+  async updateVariantExpiration(variantId: string, value: string | null): Promise<void> {
+    const expirationDate = normalizeExpirationDate(value);
+    const db = await getDatabase();
+    await db.runAsync('UPDATE product_variants SET expiration_date = ?, updated_at = ? WHERE id = ?;',
+      [expirationDate, getCurrentIsoTimestamp(), variantId]);
   }
 
   async addImage(productId: string, relativePath: string): Promise<ProductImage> {
