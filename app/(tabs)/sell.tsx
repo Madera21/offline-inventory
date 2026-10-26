@@ -1,4 +1,9 @@
+import { parseStoreAmount } from '../../src/utils/quantities';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
+import { storeRepository, CustomerBalance } from '../../src/db/repositories/store.repository';
+import { StoreButton, StoreText } from '../../src/components/StoreForm';
+import { ExpirationBadge } from '../../src/components/ExpirationBadge';
+import { useLabels } from '../../src/store/PreferencesProvider';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -35,6 +40,12 @@ export default function QuickSaleScreen() {
 
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [search, setSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [scanMessage, setScanMessage] = useState('');
+  const [customers, setCustomers] = useState<CustomerBalance[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const commitLock = React.useRef(false);
+  const { t } = useLabels();
   const [loading, setLoading] = useState(true);
 
   // Variant picker modal for products with multiple variants
@@ -59,6 +70,7 @@ export default function QuickSaleScreen() {
           return;
         }
 
+        setScanMessage(`Added ${product.name} · ${variant.label}`);
         cart.addItem({
           variant_id: variant.id,
           product_id: product.id,
@@ -110,6 +122,7 @@ export default function QuickSaleScreen() {
     totalMinor: number;
     changeMinor: number;
     saleId: string;
+    credit: boolean;
   } | null>(null);
 
   const loadProducts = useCallback(async () => {
@@ -119,6 +132,7 @@ export default function QuickSaleScreen() {
         status: 'ACTIVE',
       });
       setProducts(data);
+      setCustomers(await storeRepository.customers());
     } catch (err) {
       console.error('Failed to load products for quick sale:', err);
     } finally {
@@ -133,7 +147,7 @@ export default function QuickSaleScreen() {
   );
 
   const handleProductPress = (product: ProductWithDetails) => {
-    if (product.has_multiple_variants) {
+    if (product.has_multiple_variants || (product.variants[0]?.pack_size ?? 1) > 1) {
       setVariantModalProduct(product);
     } else {
       const primary = product.variants[0];
@@ -187,7 +201,8 @@ export default function QuickSaleScreen() {
   };
 
   const handleCommitSale = async () => {
-    if (cart.items.length === 0) return;
+    if (cart.items.length === 0 || commitLock.current) return;
+    if (cart.paymentMethod === 'CREDIT' && !customerId) { Alert.alert('Customer required', 'Select a customer for this utang sale.'); return; }
 
     if (cart.paymentMethod === 'CASH' && cart.cashReceivedMinor !== null) {
       if (cart.cashReceivedMinor < cart.totalMinor) {
@@ -199,18 +214,22 @@ export default function QuickSaleScreen() {
       }
     }
 
+    commitLock.current = true;
     setSubmitting(true);
     try {
       const result = await salesService.commitSale({
         items: cart.items,
-        discountMinor: cart.discountMinor,
+        discountMinor: parseStoreAmount(discountInput || '0'),
         paymentMethod: cart.paymentMethod,
+        customerId,
+        cashReceivedMinor: cashInput.trim() ? parseStoreAmount(cashInput) : null,
       });
 
-      const changeMinor = cart.changeMinor;
+      const changeMinor = cart.paymentMethod === 'CASH' && cart.cashReceivedMinor !== null ? Math.max(0, cart.cashReceivedMinor - result.total_minor) : 0;
       cart.clear();
       setDiscountInput('');
       setCashInput('');
+      setScanMessage('');
       setCartModalVisible(false);
 
       setCompletedReceipt({
@@ -218,12 +237,14 @@ export default function QuickSaleScreen() {
         totalMinor: result.total_minor,
         changeMinor,
         saleId: result.id,
+        credit: result.payment_method === 'CREDIT',
       });
 
       await loadProducts();
     } catch (err: any) {
       Alert.alert('Checkout Error', err?.message || 'Failed to complete sale.');
     } finally {
+      commitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -246,9 +267,13 @@ export default function QuickSaleScreen() {
         </View>
       </View>
 
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+        <StoreButton secondary label={favoritesOnly ? `${t('favorite')} ✓ · Show all` : t('favorite')} onPress={() => setFavoritesOnly(!favoritesOnly)} />
+      </View>
+      {scanMessage ? <Text accessibilityRole="alert" style={{ color: colors.success, paddingHorizontal: 16, paddingVertical: 6 }}>{scanMessage}</Text> : null}
       {/* Product Catalog Grid */}
       <FlatList
-        data={products}
+        data={favoritesOnly ? products.filter(product => product.variants.some(variant => variant.favorite)) : products}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
@@ -311,11 +336,11 @@ export default function QuickSaleScreen() {
           </View>
           <TouchableOpacity
             style={styles.checkoutBtn}
-            onPress={() => setCartModalVisible(true)}
+            onPress={() => { setCartModalVisible(true); void storeRepository.customers().then(setCustomers).catch(() => Alert.alert('Could not load customers', 'Please retry checkout.')); }}
             activeOpacity={0.85}
           >
             <Ionicons name="cart" size={18} color={colors.onAccent} />
-            <Text style={styles.checkoutBtnText}>Checkout</Text>
+            <Text style={styles.checkoutBtnText}>{t('checkout')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -329,19 +354,25 @@ export default function QuickSaleScreen() {
 
             <ScrollView style={styles.variantList}>
               {variantModalProduct?.variants.map((v) => (
-                <TouchableOpacity
+                <View
                   key={v.id}
-                  style={[styles.variantItem, v.stock_quantity <= 0 && styles.variantItemDisabled]}
-                  onPress={() => handleSelectVariant(v)}
+                  style={[styles.variantItem, { flexWrap: 'wrap', gap: 8 }, v.stock_quantity <= 0 && styles.variantItemDisabled]}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.variantLabelText}>{v.label}</Text>
+                    <ExpirationBadge date={v.expiration_date} />
                     <Text style={styles.variantStockText}>
                       Stock: {v.stock_quantity} {v.unit_label}
                     </Text>
                   </View>
                   <MoneyText amountMinor={v.price_minor} style={styles.variantPriceText} />
-                </TouchableOpacity>
+                  <StoreButton secondary label="Add piece" disabled={v.stock_quantity <= 0} onPress={() => handleSelectVariant(v)} />
+                  {(v.pack_size ?? 1) > 1 && <StoreButton secondary label={`Add pack (${v.pack_size})`} disabled={v.stock_quantity - (cart.items.find(item => item.variant_id === v.id)?.quantity ?? 0) < v.pack_size!} onPress={() => {
+                    if (!variantModalProduct) return;
+                    cart.addItem({ variant_id: v.id, product_id: variantModalProduct.id, product_name: variantModalProduct.name, variant_label: v.label, unit_label: v.unit_label, unit_price_minor: v.price_minor, unit_cost_minor: v.cost_minor, max_available_stock: v.stock_quantity }, v.pack_size);
+                    setVariantModalProduct(null);
+                  }} />}
+                </View>
               ))}
             </ScrollView>
 
@@ -358,7 +389,7 @@ export default function QuickSaleScreen() {
       {/* Checkout Drawer / Cart Modal */}
       <Modal visible={cartModalVisible} transparent animationType="slide">
         <View style={styles.drawerOverlay}>
-          <View style={styles.drawerCard}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={[styles.drawerCard, { flexGrow: 0 }]} contentContainerStyle={{ paddingBottom: 20 }}>
             <View style={styles.drawerHeader}>
               <Text style={styles.drawerTitle}>Current Cart ({cart.totalQuantity})</Text>
               <TouchableOpacity onPress={cart.clear}>
@@ -372,6 +403,7 @@ export default function QuickSaleScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <View style={styles.cartItemDetails}>
                     <Text style={styles.cartItemName}>{item.product_name}</Text>
+                    <ExpirationBadge date={products.find(product => product.id === item.product_id)?.variants.find(variant => variant.id === item.variant_id)?.expiration_date} />
                     <Text style={styles.cartItemVariant}>
                       {item.variant_label} • <MoneyText amountMinor={item.unit_price_minor} />
                     </Text>
@@ -439,6 +471,14 @@ export default function QuickSaleScreen() {
                 ))}
               </View>
 
+              <StoreButton secondary label={cart.paymentMethod === 'CREDIT' ? 'Utang selected ✓ · Switch to cash' : 'Pay later / Utang'} onPress={() => cart.setPaymentMethod(cart.paymentMethod === 'CREDIT' ? 'CASH' : 'CREDIT')} />
+              {cart.paymentMethod === 'CREDIT' && <View style={{ maxHeight: 160 }}>
+                <ScrollView nestedScrollEnabled>
+                  <StoreText>Select customer</StoreText>
+                  {customers.map(customer => <StoreButton key={customer.id} secondary label={`${customerId === customer.id ? '✓ ' : ''}${customer.name} · ${formatMoney(customer.balance_minor)} owed`} onPress={() => setCustomerId(customer.id)} />)}
+                  <StoreButton secondary label="Add / manage customers" onPress={() => { setCartModalVisible(false); router.push('/customers'); }} />
+                </ScrollView>
+              </View>}
               {/* Discount Input */}
               <View style={styles.calcRow}>
                 <Text style={styles.calcLabel}>Discount (₱)</Text>
@@ -452,6 +492,9 @@ export default function QuickSaleScreen() {
                 />
               </View>
 
+              {cart.paymentMethod === 'CASH' && <StoreButton secondary label={t('exactCash')} onPress={() => {
+                const exact = (cart.totalMinor / 100).toFixed(2); setCashInput(exact); cart.setCashReceived(cart.totalMinor);
+              }} />}
               {/* Cash received & change calculation */}
               {cart.paymentMethod === 'CASH' && (
                 <View style={styles.calcRow}>
@@ -497,12 +540,12 @@ export default function QuickSaleScreen() {
                   {submitting ? (
                     <ActivityIndicator color={colors.onAccent} />
                   ) : (
-                    <Text style={styles.drawerConfirmText}>Confirm Sale</Text>
+                    <Text style={styles.drawerConfirmText}>{t('save')}</Text>
                   )}
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -518,7 +561,7 @@ export default function QuickSaleScreen() {
 
             <View style={styles.successBreakdown}>
               <View style={styles.successRow}>
-                <Text style={styles.successRowLabel}>Total Paid</Text>
+                <Text style={styles.successRowLabel}>{completedReceipt?.credit ? 'Added to utang' : 'Total paid'}</Text>
                 <MoneyText amountMinor={completedReceipt?.totalMinor} style={styles.successRowValue} />
               </View>
               {(completedReceipt?.changeMinor ?? 0) > 0 && (
@@ -545,7 +588,7 @@ export default function QuickSaleScreen() {
                 style={styles.newSaleBtn}
                 onPress={() => setCompletedReceipt(null)}
               >
-                <Text style={styles.newSaleText}>New Sale</Text>
+                <Text style={styles.newSaleText}>{t('newSale')}</Text>
               </TouchableOpacity>
             </View>
           </View>

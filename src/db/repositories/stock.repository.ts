@@ -1,3 +1,6 @@
+import { withInventoryTransaction } from '../writeTransaction';
+import { addBatch, consumeBatches } from '../batches';
+import { wholeQuantity } from '../../utils/quantities';
 import * as Crypto from 'expo-crypto';
 import { getDatabase } from '../database';
 import { StockMovement, StockMovementType } from '../../types';
@@ -16,6 +19,7 @@ export class StockRepository {
    * Records a stock movement and updates the variant's cached stock balance atomically.
    */
   async recordMovement(params: RecordMovementParams): Promise<StockMovement> {
+    wholeQuantity(Math.abs(params.quantityDelta));
     const db = await getDatabase();
     const now = getCurrentIsoTimestamp();
     const movement: StockMovement = {
@@ -28,14 +32,14 @@ export class StockRepository {
       sale_id: params.saleId ?? null,
     };
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
       // Check current variant
-      const variant = await db.getFirstAsync<{ stock_quantity: number; status: string }>(
-        'SELECT stock_quantity, status FROM product_variants WHERE id = ?;',
+      const variant = await db.getFirstAsync<{ stock_quantity: number; status: string; expiration_date: string | null }>(
+        'SELECT stock_quantity, status, expiration_date FROM product_variants WHERE id = ?;',
         [params.variantId]
       );
 
-      if (!variant) {
+      if (!variant || variant.status !== 'ACTIVE') {
         throw new Error(`Variant ${params.variantId} not found.`);
       }
 
@@ -66,6 +70,9 @@ export class StockRepository {
         ]
       );
 
+      if (params.quantityDelta > 0) await addBatch(db, params.variantId, Math.max(0, newStock) - Math.max(0, variant.stock_quantity), variant.expiration_date, now);
+      else await consumeBatches(db, params.variantId, -params.quantityDelta);
+
       // Update cached balance on variant
       await db.runAsync(
         `UPDATE product_variants
@@ -76,6 +83,13 @@ export class StockRepository {
     });
 
     return movement;
+  }
+
+  private async alignBatches(db: Awaited<ReturnType<typeof getDatabase>>, variantId: string, stock: number, now: string): Promise<void> {
+    const row = await db.getFirstAsync<{ total: number }>('SELECT COALESCE(SUM(quantity), 0) AS total FROM stock_batches WHERE variant_id = ?;', [variantId]);
+    const delta = Math.max(0, stock) - (row?.total ?? 0);
+    if (delta > 0) await addBatch(db, variantId, delta, null, now);
+    else if (delta < 0) await consumeBatches(db, variantId, -delta);
   }
 
   async getMovementsForVariant(variantId: string, limit = 50): Promise<StockMovement[]> {
@@ -109,13 +123,14 @@ export class StockRepository {
     const db = await getDatabase();
     let computedBalance = 0;
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
       const result = await db.getFirstAsync<{ total: number | null }>(
         'SELECT SUM(quantity_delta) as total FROM stock_movements WHERE variant_id = ?;',
         [variantId]
       );
       computedBalance = result?.total ?? 0;
       const now = getCurrentIsoTimestamp();
+      await this.alignBatches(db, variantId, computedBalance, now);
 
       await db.runAsync(
         `UPDATE product_variants
@@ -140,7 +155,7 @@ export class StockRepository {
     let discrepanciesFixed = 0;
     const now = getCurrentIsoTimestamp();
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
       for (const v of variants) {
         const result = await db.getFirstAsync<{ total: number | null }>(
           'SELECT SUM(quantity_delta) as total FROM stock_movements WHERE variant_id = ?;',
@@ -149,6 +164,7 @@ export class StockRepository {
         const ledgerTotal = result?.total ?? 0;
         if (ledgerTotal !== v.stock_quantity) {
           discrepanciesFixed++;
+          await this.alignBatches(db, v.id, ledgerTotal, now);
           await db.runAsync(
             `UPDATE product_variants
              SET stock_quantity = ?, updated_at = ?

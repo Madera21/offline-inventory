@@ -1,3 +1,6 @@
+import { withInventoryTransaction } from '../writeTransaction';
+import { StockBatch, openingBatch } from '../batches';
+import { minorAmount, wholeQuantity } from '../../utils/quantities';
 import * as Crypto from 'expo-crypto';
 import { normalizeExpirationDate } from '../../utils/expiration';
 import { getDatabase } from '../database';
@@ -11,7 +14,6 @@ import {
   EntityStatus,
 } from '../../types';
 import { getCurrentIsoTimestamp } from '../../utils/dates';
-import { stockRepository } from './stock.repository';
 import { barcodeCandidates } from '../../utils/barcode';
 
 export class DuplicateBarcodeError extends Error {
@@ -91,6 +93,12 @@ export class ProductsRepository {
       productIds
     );
 
+    const batchRows = variants.length ? await db.getAllAsync<StockBatch>(
+      `SELECT * FROM stock_batches WHERE quantity > 0 AND variant_id IN (${variants.map(() => '?').join(',')});`,
+      variants.map(variant => variant.id)
+    ) : [];
+    for (const variant of variants) variant.batches = batchRows.filter(batch => batch.variant_id === variant.id);
+
     const images = await db.getAllAsync<ProductImage>(
       `SELECT * FROM product_images 
        WHERE product_id IN (${placeholders})
@@ -159,6 +167,12 @@ export class ProductsRepository {
       [id]
     );
 
+    const batchRows = variants.length ? await db.getAllAsync<StockBatch>(
+      `SELECT * FROM stock_batches WHERE quantity > 0 AND variant_id IN (${variants.map(() => '?').join(',')});`,
+      variants.map(variant => variant.id)
+    ) : [];
+    for (const variant of variants) variant.batches = batchRows.filter(batch => batch.variant_id === variant.id);
+
     const images = await db.getAllAsync<ProductImage>(
       'SELECT * FROM product_images WHERE product_id = ? ORDER BY sort_order ASC, created_at ASC;',
       [id]
@@ -199,6 +213,9 @@ export class ProductsRepository {
   }
 
   async create(input: CreateProductInput): Promise<ProductWithDetails> {
+    minorAmount(input.price_minor);
+    if (input.cost_minor !== undefined && input.cost_minor !== null) minorAmount(input.cost_minor, true);
+    wholeQuantity(input.opening_stock ?? 0, true);
     const db = await getDatabase();
     const now = getCurrentIsoTimestamp();
     const productId = Crypto.randomUUID();
@@ -238,7 +255,7 @@ export class ProductsRepository {
 
     const createdImages: ProductImage[] = [];
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
       await this.assertBarcodeAvailable(defaultVariant.barcode);
       // 1. Insert product
       await db.runAsync(
@@ -299,18 +316,9 @@ export class ProductsRepository {
           createdImages.push(img);
         }
       }
-    });
-
-    // 4. Record opening stock movement if quantity > 0
-    if (openingStock > 0) {
-      await stockRepository.recordMovement({
-        variantId: defaultVariant.id,
-        movementType: 'OPENING_STOCK',
-        quantityDelta: openingStock,
-        reason: 'Initial stock on creation',
-      });
+      await openingBatch(db, defaultVariant.id, openingStock, expirationDate, now);
       defaultVariant.stock_quantity = openingStock;
-    }
+    });
 
     return {
       ...product,
@@ -354,7 +362,7 @@ export class ProductsRepository {
     }
 
     params.push(id);
-    await db.runAsync(`UPDATE products SET ${updates.join(', ')} WHERE id = ?;`, params);
+    await withInventoryTransaction(db, async () => { await db.runAsync(`UPDATE products SET ${updates.join(', ')} WHERE id = ?;`, params); });
   }
 
   async addVariant(
@@ -371,68 +379,71 @@ export class ProductsRepository {
       initial_stock?: number;
     }
   ): Promise<ProductVariant> {
+    minorAmount(variantData.price_minor);
+    if (variantData.cost_minor !== undefined && variantData.cost_minor !== null) minorAmount(variantData.cost_minor, true);
+    wholeQuantity(variantData.initial_stock ?? 0, true);
     const db = await getDatabase();
-    await this.assertBarcodeAvailable(variantData.barcode);
-    const now = getCurrentIsoTimestamp();
-    const variantId = Crypto.randomUUID();
-    const expirationDate = normalizeExpirationDate(variantData.expiration_date);
+    return withInventoryTransaction(db, async () => {
+      await this.assertBarcodeAvailable(variantData.barcode);
+      const now = getCurrentIsoTimestamp();
+      const variantId = Crypto.randomUUID();
+      const expirationDate = normalizeExpirationDate(variantData.expiration_date);
 
-    const variant: ProductVariant = {
-      id: variantId,
-      product_id: productId,
-      label: variantData.label.trim(),
-      sku: variantData.sku?.trim() || null,
-      barcode: variantData.barcode?.trim() || null,
-      unit_label: variantData.unit_label?.trim() || 'piece',
-      cost_minor: variantData.cost_minor !== undefined ? variantData.cost_minor : null,
-      price_minor: variantData.price_minor,
-      low_stock_threshold: variantData.low_stock_threshold !== undefined ? variantData.low_stock_threshold : null,
-      expiration_date: expirationDate,
-      stock_quantity: 0,
-      status: 'ACTIVE',
-      created_at: now,
-      updated_at: now,
-    };
+      const variant: ProductVariant = {
+        id: variantId,
+        product_id: productId,
+        label: variantData.label.trim(),
+        sku: variantData.sku?.trim() || null,
+        barcode: variantData.barcode?.trim() || null,
+        unit_label: variantData.unit_label?.trim() || 'piece',
+        cost_minor: variantData.cost_minor !== undefined ? variantData.cost_minor : null,
+        price_minor: variantData.price_minor,
+        low_stock_threshold: variantData.low_stock_threshold !== undefined ? variantData.low_stock_threshold : null,
+        expiration_date: expirationDate,
+        stock_quantity: 0,
+        status: 'ACTIVE',
+        created_at: now,
+        updated_at: now,
+      };
 
-    await db.runAsync(
-      `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at, expiration_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [
-        variant.id,
-        variant.product_id,
-        variant.label,
-        variant.sku,
-        variant.barcode,
-        variant.unit_label,
-        variant.cost_minor,
-        variant.price_minor,
-        variant.low_stock_threshold,
-        0,
-        variant.status,
-        variant.created_at,
-        variant.updated_at,
-        expirationDate,
-      ]
-    );
+      await db.runAsync(
+        `INSERT INTO product_variants (id, product_id, label, sku, barcode, unit_label, cost_minor, price_minor, low_stock_threshold, stock_quantity, status, created_at, updated_at, expiration_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          variant.id,
+          variant.product_id,
+          variant.label,
+          variant.sku,
+          variant.barcode,
+          variant.unit_label,
+          variant.cost_minor,
+          variant.price_minor,
+          variant.low_stock_threshold,
+          0,
+          variant.status,
+          variant.created_at,
+          variant.updated_at,
+          expirationDate,
+        ]
+      );
 
-    if (variantData.initial_stock && variantData.initial_stock > 0) {
-      await stockRepository.recordMovement({
-        variantId: variant.id,
-        movementType: 'OPENING_STOCK',
-        quantityDelta: variantData.initial_stock,
-        reason: 'Initial variant stock',
-      });
-      variant.stock_quantity = variantData.initial_stock;
-    }
+      await openingBatch(db, variant.id, variantData.initial_stock ?? 0, expirationDate, now);
+      variant.stock_quantity = variantData.initial_stock ?? 0;
 
-    return variant;
+      return variant;
+    });
   }
 
   async updateVariantExpiration(variantId: string, value: string | null): Promise<void> {
     const expirationDate = normalizeExpirationDate(value);
     const db = await getDatabase();
-    await db.runAsync('UPDATE product_variants SET expiration_date = ?, updated_at = ? WHERE id = ?;',
-      [expirationDate, getCurrentIsoTimestamp(), variantId]);
+    await withInventoryTransaction(db, async () => {
+      const batches = await db.getAllAsync<{ id: string }>('SELECT id FROM stock_batches WHERE variant_id = ? AND quantity > 0;', [variantId]);
+      if (batches.length > 1) throw new Error('This item has several batches. Open Batches to edit each date.');
+      await db.runAsync('UPDATE stock_batches SET expiration_date = ? WHERE variant_id = ? AND quantity > 0;', [expirationDate, variantId]);
+      await db.runAsync('UPDATE product_variants SET expiration_date = ?, updated_at = ? WHERE id = ?;',
+        [expirationDate, getCurrentIsoTimestamp(), variantId]);
+    });
   }
 
   async addImage(productId: string, relativePath: string): Promise<ProductImage> {

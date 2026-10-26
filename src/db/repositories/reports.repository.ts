@@ -37,14 +37,19 @@ export class ReportsRepository {
   async getSalesReport(startDateIso?: string, endDateIso?: string): Promise<SalesReportMetrics> {
     const db = await getDatabase();
     let query = `
-      SELECT 
-        COUNT(DISTINCT s.id) as tx_count,
-        SUM(s.total_minor) as total_revenue,
-        SUM(si.quantity) as total_units,
-        SUM(CASE WHEN si.unit_cost_minor IS NOT NULL THEN si.line_total_minor - (si.unit_cost_minor * si.quantity) ELSE 0 END) as gross_profit,
-        SUM(CASE WHEN si.unit_cost_minor IS NULL THEN 1 ELSE 0 END) as unknown_cost_items
+      SELECT COUNT(*) AS tx_count, SUM(s.total_minor) AS total_revenue,
+        SUM(si.total_units) AS total_units,
+        SUM(si.known_profit - CASE WHEN s.subtotal_minor > 0
+          THEN ROUND(s.discount_minor * si.known_revenue * 1.0 / s.subtotal_minor) ELSE 0 END) AS gross_profit,
+        SUM(si.unknown_cost_items) AS unknown_cost_items
       FROM sales s
-      LEFT JOIN sale_items si ON s.id = si.sale_id
+      LEFT JOIN (
+        SELECT sale_id, SUM(quantity) AS total_units,
+          SUM(CASE WHEN unit_cost_minor IS NOT NULL THEN line_total_minor - unit_cost_minor * quantity ELSE 0 END) AS known_profit,
+          SUM(CASE WHEN unit_cost_minor IS NOT NULL THEN line_total_minor ELSE 0 END) AS known_revenue,
+          SUM(CASE WHEN unit_cost_minor IS NULL THEN 1 ELSE 0 END) AS unknown_cost_items
+        FROM sale_items GROUP BY sale_id
+      ) si ON si.sale_id = s.id
       WHERE s.status = 'COMPLETED'
     `;
     const params: string[] = [];

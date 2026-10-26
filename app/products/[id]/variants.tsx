@@ -2,6 +2,9 @@ import { ThemeColors, useThemeStyles } from '../../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../../src/components/ExpirationDateField';
 import { ExpirationBadge } from '../../../src/components/ExpirationBadge';
 import { ExpirationDateEditor } from '../../../src/components/ExpirationDateEditor';
+import { VariantSettings } from '../../../src/components/VariantSettings';
+import { StoreButton } from '../../../src/components/StoreForm';
+import { storeRepository } from '../../../src/db/repositories/store.repository';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -174,6 +177,12 @@ export default function VariantsScreen() {
 
             <ExpirationBadge date={item.expiration_date} />
             <ExpirationDateEditor variant={item} onSaved={loadData} />
+            <VariantSettings variant={item} onSaved={loadData} />
+            <StoreButton secondary label="Batches" onPress={() => router.push(`/stock/batches?variantId=${item.id}`)} />
+            <StoreButton secondary label={item.favorite ? 'Unpin favorite' : 'Pin favorite'} onPress={async () => {
+              try { await storeRepository.favorite(item.id, !item.favorite); await loadData(); }
+              catch { Alert.alert('Could not save favorite', 'Please try again.'); }
+            }} />
             <View style={styles.metaRow}>
               {item.sku && <Text style={styles.metaItem}>SKU: {item.sku}</Text>}
               {item.barcode && <Text style={styles.metaItem}>Barcode: {item.barcode}</Text>}

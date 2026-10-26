@@ -1,3 +1,6 @@
+import { withInventoryTransaction } from '../db/writeTransaction';
+import { consumeBatches, restoreSaleBatches } from '../db/batches';
+import { wholeQuantity, minorAmount } from '../utils/quantities';
 import * as Crypto from 'expo-crypto';
 import { getDatabase } from '../db/database';
 import { Sale, SaleItem, PaymentMethod } from '../types';
@@ -8,6 +11,8 @@ export interface CommitSaleInput {
   items: CartItem[];
   discountMinor: number;
   paymentMethod: PaymentMethod;
+  customerId?: string | null;
+  cashReceivedMinor?: number | null;
 }
 
 export interface SaleWithDetails extends Sale {
@@ -28,6 +33,14 @@ export class SalesService {
       throw new Error('Cannot commit an empty sale.');
     }
 
+    minorAmount(input.discountMinor, true);
+    const seen = new Set<string>();
+    for (const item of input.items) {
+      wholeQuantity(item.quantity);
+      if (seen.has(item.variant_id)) throw new Error('Duplicate cart item. Combine quantities before saving.');
+      seen.add(item.variant_id);
+    }
+    if (input.paymentMethod === 'CREDIT' && !input.customerId) throw new Error('Choose a customer for this credit sale.');
     const db = await getDatabase();
     const now = getCurrentIsoTimestamp();
     const saleId = Crypto.randomUUID();
@@ -44,7 +57,11 @@ export class SalesService {
       unit_label: string;
     })[] = [];
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
+      if (input.paymentMethod === 'CREDIT') {
+        const customer = await db.getFirstAsync('SELECT id FROM customers WHERE id = ?;', [input.customerId!]);
+        if (!customer) throw new Error('Customer no longer exists.');
+      }
       // 1. Check setting for negative stock
       const setting = await db.getFirstAsync<{ value: string }>(
         "SELECT value FROM app_settings WHERE key = 'allow_negative_stock';"
@@ -62,15 +79,16 @@ export class SalesService {
           cost_minor: number | null;
           unit_label: string;
           product_name: string;
+          product_status: string;
         }>(
-          `SELECT v.*, p.name as product_name 
+          `SELECT v.*, p.name as product_name, p.status AS product_status
            FROM product_variants v
            JOIN products p ON v.product_id = p.id
            WHERE v.id = ?;`,
           [cartItem.variant_id]
         );
 
-        if (!variant || variant.status !== 'ACTIVE') {
+        if (!variant || variant.status !== 'ACTIVE' || variant.product_status === 'ARCHIVED') {
           throw new Error(`Variant "${cartItem.product_name} - ${cartItem.variant_label}" is no longer available.`);
         }
 
@@ -100,6 +118,10 @@ export class SalesService {
       const discountMinor = Math.min(input.discountMinor || 0, subtotalMinor);
       const totalMinor = Math.max(0, subtotalMinor - discountMinor);
 
+      if (input.paymentMethod === 'CASH' && input.cashReceivedMinor !== null && input.cashReceivedMinor !== undefined) {
+        minorAmount(input.cashReceivedMinor, true);
+        if (input.cashReceivedMinor < totalMinor) throw new Error('Cash received is below the current sale total. Review prices and payment.');
+      }
       // 3. Insert sales header record
       await db.runAsync(
         `INSERT INTO sales (id, receipt_number, sold_at, subtotal_minor, discount_minor, total_minor, payment_method, status)
@@ -116,6 +138,11 @@ export class SalesService {
         ]
       );
 
+      if (input.paymentMethod === 'CREDIT') {
+        await db.runAsync('UPDATE sales SET customer_id = ? WHERE id = ?;', [input.customerId!, saleId]);
+        await db.runAsync('INSERT INTO credit_entries (id, customer_id, sale_id, amount_minor, payment_method, note, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?);',
+          [Crypto.randomUUID(), input.customerId!, saleId, totalMinor, 'CREDIT', `Sale ${receiptNumber}`, now]);
+      }
       // 4. Insert each sale item, stock movement, and update variant balance
       for (const item of itemsToInsert) {
         await db.runAsync(
@@ -132,6 +159,7 @@ export class SalesService {
           ]
         );
 
+        await consumeBatches(db, item.variant_id, item.quantity, item.id);
         const movementId = Crypto.randomUUID();
         await db.runAsync(
           `INSERT INTO stock_movements (id, variant_id, movement_type, quantity_delta, reason, occurred_at, sale_id)
@@ -168,6 +196,7 @@ export class SalesService {
       total_minor: totalMinor,
       payment_method: input.paymentMethod,
       status: 'COMPLETED',
+      customer_id: input.paymentMethod === 'CREDIT' ? input.customerId : null,
       items: itemsToInsert,
     };
   }
@@ -215,7 +244,7 @@ export class SalesService {
     const db = await getDatabase();
     const now = getCurrentIsoTimestamp();
 
-    await db.withTransactionAsync(async () => {
+    await withInventoryTransaction(db, async () => {
       const sale = await db.getFirstAsync<Sale>(
         'SELECT * FROM sales WHERE id = ?;',
         [saleId]
@@ -234,6 +263,12 @@ export class SalesService {
         [saleId]
       );
 
+      if (sale.payment_method === 'CREDIT' && sale.customer_id) {
+        const balance = await db.getFirstAsync<{ total: number }>('SELECT COALESCE(SUM(amount_minor), 0) AS total FROM credit_entries WHERE customer_id = ?;', [sale.customer_id]);
+        if ((balance?.total ?? 0) < sale.total_minor) throw new Error('This credit sale has been repaid. Resolve the customer refund before voiding.');
+        await db.runAsync('INSERT INTO credit_entries (id, customer_id, sale_id, amount_minor, payment_method, note, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?);',
+          [Crypto.randomUUID(), sale.customer_id, sale.id, -sale.total_minor, 'CREDIT', `Void ${sale.receipt_number}`, now]);
+      }
       // 1. Mark sale as voided
       await db.runAsync(
         "UPDATE sales SET status = 'VOIDED' WHERE id = ?;",
@@ -242,6 +277,9 @@ export class SalesService {
 
       // 2. Reverse stock impact for each item
       for (const item of items) {
+        const current = await db.getFirstAsync<{ stock_quantity: number }>('SELECT stock_quantity FROM product_variants WHERE id = ?;', [item.variant_id]);
+        const physicalReturn = Math.max(0, (current?.stock_quantity ?? 0) + item.quantity) - Math.max(0, current?.stock_quantity ?? 0);
+        await restoreSaleBatches(db, item.id, item.variant_id, physicalReturn, now);
         const movementId = Crypto.randomUUID();
         await db.runAsync(
           `INSERT INTO stock_movements (id, variant_id, movement_type, quantity_delta, reason, occurred_at, sale_id)

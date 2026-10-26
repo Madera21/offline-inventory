@@ -9,6 +9,7 @@ import {
   TextInput,
   StatusBar,
   Animated,
+  Vibration,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +83,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     setLastScannedFeedback(rawData);
 
     // Trigger parent callback
+    Vibration.vibrate(40);
     onScan(rawData);
 
     if (continuous) {

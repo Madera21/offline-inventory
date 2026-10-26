@@ -1,3 +1,4 @@
+import { PreferencesProvider, useLabels } from '../src/store/PreferencesProvider';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
@@ -39,10 +40,11 @@ export default function RootLayout() {
     );
   }
 
-  return <ThemeProvider><AppNavigator /></ThemeProvider>;
+  return <ThemeProvider><PreferencesProvider><AppNavigator /></PreferencesProvider></ThemeProvider>;
 }
 
 function AppNavigator() {
+  const { t } = useLabels();
   const { colors, isDark } = useTheme();
   return (
     <>
@@ -56,6 +58,12 @@ function AppNavigator() {
           headerShadowVisible: false,
         }}
       >
+        <Stack.Screen name="stock/count" options={{ title: t('count') }} />
+        <Stack.Screen name="stock/receive" options={{ title: t('receive') }} />
+        <Stack.Screen name="stock/batches" options={{ title: t('batches') }} />
+        <Stack.Screen name="shopping/index" options={{ title: t('shopping') }} />
+        <Stack.Screen name="customers/index" options={{ title: t('credit') }} />
+        <Stack.Screen name="closing/index" options={{ title: t('closing') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="help" options={{ title: 'How to Use' }} />
         <Stack.Screen

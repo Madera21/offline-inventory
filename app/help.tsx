@@ -7,7 +7,7 @@ const topics = [
     title: 'Add your first product',
     steps: [
       'Open Stock and tap + Add product manually. Enter the product name and selling price in pesos.',
-      'Add a category, purchase cost, opening stock, and low stock limit as needed. A photo, SKU, and barcode are optional.',
+      'Enter the starting quantity. Open More details to add cost per piece, a low stock alert, category, expiration date, SKU, or barcode. A photo is optional.',
       'Tap Save Product. Open the product later and use Edit Info to change its details, or Manage under Variants & Stock for different sizes or units.',
     ],
     tip: 'Create categories in More > Categories to keep your shelves organized.',
@@ -28,7 +28,25 @@ const topics = [
       'Tap Checkout to review the cart. Change quantities or remove items, then choose a payment method and enter any discount.',
       'For cash payments, enter Cash Received to see the change due. Check Total Due and tap Confirm Sale.',
     ],
-    tip: 'A confirmed sale reduces stock automatically. Use View Receipt to see the completed transaction.',
+    tip: 'Use Exact cash for the total due. Configured packs and pieces share one stock balance; pack prices use the per-piece price. A confirmed sale reduces stock automatically.',
+  },
+  {
+    title: 'Receive a delivery',
+    steps: [
+      'Go to More > Receive delivery. Search or scan to add each item in the delivery and optionally enter the supplier.',
+      'Enter pieces received, or switch to configured packs. Add a cost per piece and expiration date when known. Add the same item again for a different expiration date.',
+      'Review the rows and tap Save delivery to update stock and expiration batches together.',
+    ],
+    tip: 'Set Pieces per pack / box from the product or variant settings before receiving or selling packs.',
+  },
+  {
+    title: 'Count what is on the shelf',
+    steps: [
+      'Go to More > Count stock. Search or scan for the products you are counting.',
+      'Enter each actual shelf quantity, including zero. Leave items you have not counted blank and check the displayed differences.',
+      'Tap Save stock count. If stock changed while you were counting, refresh and enter the count again.',
+    ],
+    tip: 'Count stock sets the final balance. Stock Adjustment records the amount being added or removed.',
   },
   {
     title: 'Record stock movements',
@@ -37,16 +55,16 @@ const topics = [
       'Choose the product and variant. Select Restock (+) for deliveries, Damage / Defect (−) for losses, or Return (+) for customer returns.',
       'Enter the quantity being added or removed and select a reason. Tap Commit Stock Adjustment, review the change, then Confirm & Save.',
     ],
-    tip: 'Enter the amount of the change, not the final shelf balance. The current Manual Count option also adds the entered quantity to existing stock.',
+    tip: 'Enter the amount of the change, not the final shelf balance. Choose Count stock when you want to enter an actual shelf count.',
   },
   {
     title: 'Track expiration dates',
     steps: [
       'Set an optional expiration date when adding a product. Use the YYYY-MM-DD format, for example 2027-06-30.',
-      'To update it later, open the product and tap Edit expiration date for the relevant variant, then Save date. Clear the date if it no longer applies.',
+      'Open a product and choose Batches for the relevant variant to review remaining stock. Edit each batch date and tap Save. Clear a date if it no longer applies.',
       'Use the Expiring soon and Expired filters in Stock to review active variants with stock remaining. Expiring soon includes today and the next 30 days.',
     ],
-    tip: 'Each variant has one expiration date. Update it when the stock you are tracking changes.',
+    tip: 'Delivery rows have separate expiration batches. Sales use the earliest dated stock first and undated stock last.',
   },
   {
     title: 'Review history and reports',
@@ -55,14 +73,23 @@ const topics = [
       'If a sale was entered by mistake, open its receipt, tap Void This Sale, enter a reason, and confirm. Voiding returns the sold stock.',
       'Go to More > Sales & Inventory Reports for sales totals, gross profit, inventory valuation, and CSV exports.',
     ],
-    tip: 'Enter purchase costs on your products to make gross profit and inventory valuation more useful.',
+    tip: 'Enter purchase costs to make profit and valuation more useful. A credit sale with repayments may require resolving the customer refund before it can be voided.',
+  },
+  {
+    title: 'Manage utang, shopping, and closing',
+    steps: [
+      'For a credit sale, choose Utang at checkout and select a customer. Add customers and record partial repayments under More > Utang.',
+      'Use More > Shopping list to add low-stock suggestions or other products, set desired quantities, mark purchases, and share remaining items. Receive the actual delivery separately to update stock.',
+      'Use More > Daily closing to enter opening cash, record expenses or cash outflows, and compare expected cash with the amount you count at closing.',
+    ],
+    tip: 'Language / Wika in More switches core labels between English and Filipino. This guide uses the English labels.',
   },
   {
     title: 'Back up your records',
     steps: [
       'Go to More > Backup & Restore and tap Create & Save Backup. Save a copy outside the app using the sharing options when available.',
       'Create backups regularly. Records are stored on this device, so losing the phone or uninstalling the app can lose your data.',
-      'Restore Backup currently uses the most recent backup in the app folder and replaces current records. Save a backup of your current data first.',
+      'Tap Restore Backup and select the saved backup JSON file. Check the file name and backup date before confirming replacement of your current records. Back up your current data first.',
     ],
     tip: 'Share Products CSV exports a spreadsheet of your catalog. Use a full backup to preserve sales, stock history, and photos too.',
   },

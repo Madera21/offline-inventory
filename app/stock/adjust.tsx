@@ -1,3 +1,4 @@
+import { useLabels } from '../../src/store/PreferencesProvider';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
 import {
@@ -23,6 +24,7 @@ import { StockReasonPicker, MANUAL_STOCK_REASON } from '../../src/components/Sto
 export default function StockAdjustScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const router = useRouter();
+  const { t } = useLabels();
   const params = useLocalSearchParams<{ productId?: string; variantId?: string }>();
 
   const [loading, setLoading] = useState(true);
@@ -285,10 +287,10 @@ export default function StockAdjustScreen() {
       <Text style={styles.sectionHeader}>Movement Type</Text>
       <View style={styles.typeGrid}>
         {[
-          { type: 'RESTOCK' as StockMovementType, label: 'Restock (+)', icon: 'add-circle-outline' as const, color: colors.success },
+          { type: 'RESTOCK' as StockMovementType, label: t('restock') + ' (+)', icon: 'add-circle-outline' as const, color: colors.success },
           { type: 'DAMAGE' as StockMovementType, label: 'Damage / Defect (−)', icon: 'remove-circle-outline' as const, color: colors.danger },
           { type: 'CUSTOMER_RETURN' as StockMovementType, label: 'Return (+)', icon: 'arrow-undo-outline' as const, color: colors.accent },
-          { type: 'ADJUSTMENT' as StockMovementType, label: 'Manual Count', icon: 'options-outline' as const, color: colors.warning },
+          { type: 'ADJUSTMENT' as StockMovementType, label: t('count'), icon: 'options-outline' as const, color: colors.warning },
         ].map((item) => {
           const isActive = movementType === item.type;
           return (
@@ -296,6 +298,7 @@ export default function StockAdjustScreen() {
               key={item.type}
               style={[styles.typeOption, isActive && styles.typeOptionActive]}
               onPress={() => {
+                if (item.type === 'ADJUSTMENT') { router.push('/stock/count'); return; }
                 if (movementType !== item.type) {
                   setMovementType(item.type);
                   setSelectedReason(null);
