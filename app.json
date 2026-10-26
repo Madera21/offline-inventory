@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "offlineinventory",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -43,7 +42,8 @@
       ],
       "expo-sqlite",
       "expo-sharing",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font"
     ]
   }
 }

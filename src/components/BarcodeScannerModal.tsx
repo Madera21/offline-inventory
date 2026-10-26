@@ -121,7 +121,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <StatusBar barStyle="light-content" />
 
         {/* Top Header Controls */}
         <View style={styles.header}>

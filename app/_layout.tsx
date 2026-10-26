@@ -48,7 +48,7 @@ function AppNavigator() {
   const { colors, isDark } = useTheme();
   return (
     <>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.paper} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.paper },

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, DeviceEventEmitter, StyleSheet, useColorScheme } from 'react-native';
+import { Alert, DeviceEventEmitter, useColorScheme } from 'react-native';
+import type { ImageStyle, TextStyle, ViewStyle } from 'react-native';
 import { getDatabase } from '../db/database';
 
 export const lightColors = {
@@ -42,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useTheme = () => useContext(ThemeContext);
-export function useThemeStyles<T extends StyleSheet.NamedStyles<T>>(factory: (colors: ThemeColors) => T) {
+export function useThemeStyles<T extends { [K in keyof T]: ViewStyle | TextStyle | ImageStyle }>(factory: (colors: ThemeColors) => T) {
   const theme = useTheme();
   const styles = useMemo(() => factory(theme.colors), [factory, theme.colors]);
   return { ...theme, styles };
