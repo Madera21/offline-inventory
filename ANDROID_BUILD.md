@@ -1,6 +1,6 @@
 # Android APK Builds
 
-Run `npm run apk` from the project root with Node.js 22 LTS or newer and JDK 21 available on `PATH`. No Expo account or running Metro server is needed for the installed release app.
+Run `npm run apk` from the project root with Node.js 24 LTS (`.nvmrc`) and JDK 21 available on `PATH`. Expo SDK 58 requires Node.js 22.13+ or 24.3+ on supported LTS lines. No Expo account or running Metro server is needed for the installed release app.
 
 ## Android SDK
 
