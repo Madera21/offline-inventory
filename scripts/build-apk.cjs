@@ -10,9 +10,12 @@ const sdk = env.ANDROID_HOME || env.ANDROID_SDK_ROOT || path.join(root, '.androi
 env.ANDROID_HOME = sdk;
 env.ANDROID_SDK_ROOT = sdk;
 const windows = process.platform === 'win32';
-const buildTools = path.join(sdk, 'build-tools', '36.0.0');
+const versions = fs.readFileSync(path.join(root, 'node_modules/react-native/gradle/libs.versions.toml'), 'utf8');
+const buildToolsVersion = versions.match(/^buildTools\s*=\s*"([^"]+)"/m)?.[1];
+if (!buildToolsVersion) throw new Error('Could not determine the Android build-tools version required by React Native.');
+const buildTools = path.join(sdk, 'build-tools', buildToolsVersion);
 const signer = path.join(buildTools, windows ? 'apksigner.bat' : 'apksigner');
-if (!fs.existsSync(signer)) throw new Error('Android SDK build-tools 36.0.0 are required. See ANDROID_BUILD.md.');
+if (!fs.existsSync(signer)) throw new Error(`Android SDK build-tools ${buildToolsVersion} are required. See ANDROID_BUILD.md.`);
 
 function run(command, args, cwd = root, capture = false) {
   const batch = windows && /\.(bat|cmd)$/i.test(command);
@@ -65,8 +68,13 @@ app.expo.android.versionCode = versionCode;
 fs.writeFileSync(appPath, JSON.stringify(app, null, 2) + '\n');
 
 run(process.execPath, ['node_modules/expo/bin/cli', 'prebuild', '--platform', 'android', '--no-install']);
-const localGradle = path.join(sdk, 'gradle', 'gradle-9.3.1', 'bin', windows ? 'gradle.bat' : 'gradle');
-const gradle = fs.existsSync(localGradle) ? localGradle : path.join(root, 'android', windows ? 'gradlew.bat' : 'gradlew');
+if (windows) {
+  // Keep generated C++ object paths below Windows Ninja's path limit.
+  const appGradle = path.join(root, 'android/app/build.gradle');
+  const shortPaths = '\nandroid.defaultConfig.externalNativeBuild.cmake.arguments.add("-DCMAKE_OBJECT_PATH_MAX=240")\n';
+  if (!fs.readFileSync(appGradle, 'utf8').includes('CMAKE_OBJECT_PATH_MAX')) fs.appendFileSync(appGradle, shortPaths);
+}
+const gradle = path.join(root, 'android', windows ? 'gradlew.bat' : 'gradlew');
 const jdk17Dir = path.join(sdk, 'jdk17');
 const jdk17 = fs.existsSync(jdk17Dir) ? fs.readdirSync(jdk17Dir).map((name) => path.join(jdk17Dir, name))
   .find((location) => fs.existsSync(path.join(location, 'bin', windows ? 'java.exe' : 'java'))) : null;

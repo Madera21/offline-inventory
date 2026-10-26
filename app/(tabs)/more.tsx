@@ -6,6 +6,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteAllAppData } from '../../src/services/reset.service';
+import { appVersion } from '../../src/utils/appVersion';
 
 export default function MoreScreen() {
   const { colors, styles, appearance, setAppearance } = useThemeStyles(createStyles);
@@ -226,7 +227,7 @@ export default function MoreScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 20, fontSize: 12 }}>Offline Inventory · 1.0.0 · Philippine Peso (₱)</Text>
+      <Text style={{ color: colors.muted, textAlign: 'center', paddingVertical: 20, fontSize: 12 }}>Offline Inventory · {appVersion} · Philippine Peso (₱)</Text>
     </ScrollView>
   );
 }
