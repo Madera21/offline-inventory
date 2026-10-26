@@ -57,6 +57,7 @@ function AppNavigator() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="help" options={{ title: 'How to Use' }} />
         <Stack.Screen
           name="products/new"
           options={{ title: 'Add Product', presentation: 'card' }}
