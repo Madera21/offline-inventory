@@ -52,6 +52,25 @@ export default function MoreScreen() {
         <ActivityIndicator color={colors.danger} />
         <Text style={{ color: colors.ink }}>Deleting app data...</Text>
       </View>}
+      <Text style={styles.sectionTitle}>Help & Getting Started</Text>
+      <View style={styles.menuGroup}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          accessibilityRole="button"
+          onPress={() => router.push('/help')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.menuIcon, { backgroundColor: colors.accentSoft }]}>
+            <Ionicons name="book-outline" size={20} color={colors.accent} />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={styles.menuTitle}>How to Use</Text>
+            <Text style={styles.menuSubtitle}>Add products, sell, manage stock, and save backups</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.sectionTitle}>Store tools</Text>
       <View style={{ gap: 10 }}>
         <StoreButton secondary label={t('receive')} onPress={() => router.push('/stock/receive')} />

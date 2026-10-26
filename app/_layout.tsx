@@ -65,6 +65,7 @@ function AppNavigator() {
         <Stack.Screen name="customers/index" options={{ title: t('credit') }} />
         <Stack.Screen name="closing/index" options={{ title: t('closing') }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="help" options={{ title: 'How to Use' }} />
         <Stack.Screen
           name="products/new"
           options={{ title: 'Add Product', presentation: 'card' }}
