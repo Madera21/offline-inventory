@@ -14,12 +14,12 @@ import { MIGRATION_V4 } from '../src/db/schema';
 
 const db = {
   getFirstAsync: jest.fn().mockResolvedValue(null),
-  getAllAsync: jest.fn(), runAsync: jest.fn().mockResolvedValue(undefined),
+  getAllAsync: jest.fn().mockResolvedValue([]), runAsync: jest.fn().mockResolvedValue(undefined),
   execAsync: jest.fn().mockResolvedValue(undefined),
   withTransactionAsync: jest.fn(async operation => operation()),
 };
 const repository = new ProductsRepository();
-beforeEach(() => { jest.clearAllMocks(); (getDatabase as jest.Mock).mockResolvedValue(db); });
+beforeEach(() => { jest.clearAllMocks(); db.getAllAsync.mockResolvedValue([]); (getDatabase as jest.Mock).mockResolvedValue(db); });
 
 test('creates products and variants with dates persisted in SQL', async () => {
   const product = await repository.create({ name: 'Milk', price_minor: 100, expiration_date: '2026-11-01' });
@@ -73,14 +73,14 @@ test('rejects malformed expiration before deleting current data during restore',
 });
 
 test('backup export and restore round-trip the expiration field', async () => {
-  db.getAllAsync.mockImplementation(async (sql: string) => sql.includes('product_variants')
+  db.getAllAsync.mockImplementation(async (sql: string) => sql === 'SELECT * FROM product_variants;'
     ? [{ id: 'v1', product_id: 'p1', expiration_date: '2027-02-28', stock_quantity: 4 }]
-    : []);
+    : sql === 'SELECT * FROM stock_batches;' ? [{ id: 'b1', variant_id: 'v1', quantity: 4, expiration_date: '2027-02-28', received_at: '2026-10-24' }] : []);
   const service = new BackupService();
   await service.createFullBackup();
   const raw = (FileSystem.writeAsStringAsync as jest.Mock).mock.calls[0][1];
   const payload = JSON.parse(raw);
-  expect(payload.manifest.schema_version).toBe(4);
+  expect(payload.manifest.schema_version).toBe(5);
   expect(payload.data.product_variants[0].expiration_date).toBe('2027-02-28');
   await service.restoreBackup(raw);
   expect(db.runAsync).toHaveBeenCalledWith(expect.stringContaining('expiration_date)'), expect.arrayContaining(['2027-02-28']));

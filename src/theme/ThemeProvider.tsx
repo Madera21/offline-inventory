@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, useColorScheme } from 'react-native';
+import { Alert, DeviceEventEmitter, StyleSheet, useColorScheme } from 'react-native';
 import { getDatabase } from '../db/database';
 
 export const lightColors = {
@@ -23,10 +23,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [appearance, setMode] = useState<Appearance>('system');
   useEffect(() => {
     let active = true;
-    getDatabase().then(db => db.getFirstAsync<{ value: string }>("SELECT value FROM app_settings WHERE key = 'appearance'"))
-      .then(row => { if (active && (row?.value === 'light' || row?.value === 'dark')) setMode(row.value); })
+    const load = () => getDatabase().then(db => db.getFirstAsync<{ value: string }>("SELECT value FROM app_settings WHERE key = 'appearance'"))
+      .then(row => { if (active) setMode(row?.value === 'light' || row?.value === 'dark' ? row.value : 'system'); })
       .catch(error => console.error('Could not load appearance:', error));
-    return () => { active = false; };
+    void load();
+    const listener = DeviceEventEmitter.addListener('inventory-restored', load);
+    return () => { active = false; listener.remove(); };
   }, []);
   const setAppearance = async (value: Appearance) => {
     try {

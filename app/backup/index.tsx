@@ -1,5 +1,9 @@
+import * as DocumentPicker from 'expo-document-picker';
+import { useFocusEffect } from 'expo-router';
+import { storeRepository } from '../../src/db/repositories/store.repository';
+import { StoreButton } from '../../src/components/StoreForm';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +24,12 @@ export default function BackupScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const [loading, setLoading] = useState(false);
   const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+  const [reminders, setReminders] = useState(true);
+  useFocusEffect(useCallback(() => {
+    void Promise.all([storeRepository.setting('last_backup_at'), storeRepository.setting('backup_reminders')])
+      .then(([last, enabled]) => { setLastBackupTime(last); setReminders(enabled !== 'false'); })
+      .catch(() => Alert.alert('Could not load backup settings', 'Please reopen this screen.'));
+  }, []));
 
   const handleCreateBackup = async () => {
     setLoading(true);
@@ -43,53 +53,27 @@ export default function BackupScreen() {
   };
 
   const handleRestorePrompt = async () => {
-    Alert.alert(
-      'Restore From Backup',
-      'Restoring a backup will replace your current inventory, products, sales, and photo records with the contents of the backup file. This cannot be undone.\n\nDo you want to proceed?',
-      [
+    if (loading) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true, multiple: false });
+      if (result.canceled) return;
+      const file = result.assets[0];
+      const content = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.UTF8 });
+      const parsed = JSON.parse(content);
+      if (!parsed.manifest || parsed.manifest.format_version !== 1 || !parsed.data) throw new Error('Choose an inventory backup JSON file.');
+      Alert.alert('Replace current records?', `Restore ${file.name} from ${formatDateTime(parsed.manifest.created_at)}? Your current records will be replaced.`, [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Choose Backup File',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Read recent backup files in documentDirectory for fast restoration test
-              const baseDir = FileSystem.documentDirectory;
-              if (!baseDir) throw new Error('Document directory not available');
-
-              const files = await FileSystem.readDirectoryAsync(baseDir);
-              const backupFiles = files.filter((f) => f.startsWith('offline_inventory_backup_') && f.endsWith('.json'));
-
-              if (backupFiles.length === 0) {
-                Alert.alert(
-                  'No Local Backup Found',
-                  'No previous backup files were detected in app storage. Please create a backup first or place a valid backup JSON in the app folder.'
-                );
-                return;
-              }
-
-              // Pick the most recent backup file
-              const latestFile = backupFiles.sort().reverse()[0];
-              const fileUri = `${baseDir}${latestFile}`;
-              const content = await FileSystem.readAsStringAsync(fileUri, {
-                encoding: FileSystem.EncodingType.UTF8,
-              });
-
-              setLoading(true);
-              const manifest = await backupService.restoreBackup(content);
-              Alert.alert(
-                'Restore Complete',
-                `Successfully restored:\n• ${manifest.record_counts.products} Products\n• ${manifest.record_counts.variants} Variants\n• ${manifest.record_counts.sales} Sales records\n• ${manifest.record_counts.images} Photos\n\nBackup created on: ${formatDateTime(manifest.created_at)}`
-              );
-            } catch (err: any) {
-              Alert.alert('Restore Failed', err?.message || 'Failed to restore backup.');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+        { text: 'Restore backup', style: 'destructive', onPress: async () => {
+          setLoading(true);
+          try {
+            const manifest = await backupService.restoreBackup(content);
+            setLastBackupTime(await storeRepository.setting('last_backup_at'));
+            Alert.alert('Restore complete', `${manifest.record_counts.products} products and ${manifest.record_counts.sales} sales restored.`);
+          } catch (error: any) { Alert.alert('Restore failed', error.message || 'Please try again.'); }
+          finally { setLoading(false); }
+        } },
+      ]);
+    } catch (error: any) { Alert.alert('Could not open backup', error.message || 'Please choose another file.'); }
   };
 
   const handleExportCsv = async () => {
@@ -122,6 +106,10 @@ export default function BackupScreen() {
         </View>
       </View>
 
+      <StoreButton secondary label={`Weekly backup reminder: ${reminders ? 'On' : 'Off'}`} onPress={async () => {
+        try { await storeRepository.setSetting('backup_reminders', reminders ? 'false' : 'true'); setReminders(!reminders); }
+        catch { Alert.alert('Could not save reminder', 'Please try again.'); }
+      }} />
       {/* Backup Section */}
       <Text style={styles.sectionHeader}>Create Backup</Text>
       <View style={styles.actionCard}>

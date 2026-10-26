@@ -2,6 +2,9 @@ import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../src/components/ExpirationDateField';
 import { ExpirationBadge } from '../../src/components/ExpirationBadge';
 import { ExpirationDateEditor } from '../../src/components/ExpirationDateEditor';
+import { VariantSettings } from '../../src/components/VariantSettings';
+import { StoreButton } from '../../src/components/StoreForm';
+import { storeRepository } from '../../src/db/repositories/store.repository';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -325,6 +328,12 @@ export default function ProductDetailsScreen() {
 
           <ExpirationBadge date={v.expiration_date} />
           <ExpirationDateEditor variant={v} onSaved={loadProduct} />
+            <VariantSettings variant={v} onSaved={loadProduct} />
+            <StoreButton secondary label="Batches" onPress={() => router.push(`/stock/batches?variantId=${v.id}`)} />
+            <StoreButton secondary label={v.favorite ? 'Unpin favorite' : 'Pin favorite'} onPress={async () => {
+              try { await storeRepository.favorite(v.id, !v.favorite); await loadProduct(); }
+              catch { Alert.alert('Could not save favorite', 'Please try again.'); }
+            }} />
           <View style={styles.variantMeta}>
             <Text style={styles.variantMetaText}>
               Stock: {v.stock_quantity} {v.unit_label}

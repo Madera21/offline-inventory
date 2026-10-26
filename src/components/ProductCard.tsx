@@ -56,9 +56,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
           )}
         </View>
 
-        {product.variants.filter(v => v.expiration_date).map(v => (
-          <ExpirationBadge key={v.id} date={v.expiration_date} prefix={product.has_multiple_variants ? v.label : undefined} />
-        ))}
+        {product.variants.flatMap(v => {
+          const dates = new Map<string, number>();
+          const batches = v.batches ?? [{ quantity: v.stock_quantity, expiration_date: v.expiration_date }];
+          batches.forEach(batch => { if (batch.expiration_date && batch.quantity > 0) dates.set(batch.expiration_date, (dates.get(batch.expiration_date) ?? 0) + batch.quantity); });
+          return [...dates.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, quantity]) => (
+            <ExpirationBadge key={`${v.id}-${date}`} date={date} prefix={`${product.has_multiple_variants ? v.label + ' · ' : ''}${quantity} ${v.unit_label}`} />
+          ));
+        })}
         <View style={styles.footerRow}>
           <StockBadge
             quantity={product.total_stock}
