@@ -16,6 +16,11 @@ import {
 import { getCurrentIsoTimestamp } from '../../utils/dates';
 import { barcodeCandidates } from '../../utils/barcode';
 
+const variantsWithStockedTotal = `SELECT v.*, MAX(v.stock_quantity, COALESCE((
+  SELECT SUM(m.quantity_delta) FROM stock_movements m WHERE m.variant_id = v.id
+  AND m.quantity_delta > 0 AND m.movement_type IN ('OPENING_STOCK', 'RESTOCK', 'ADJUSTMENT')
+), 0)) AS total_stocked FROM product_variants v`;
+
 export class DuplicateBarcodeError extends Error {
   constructor(public productId: string, productName: string) {
     super(`This barcode already belongs to "${productName}". Open the existing product to edit it or add stock.`);
@@ -87,7 +92,7 @@ export class ProductsRepository {
     const placeholders = productIds.map(() => '?').join(',');
 
     const variants = await db.getAllAsync<ProductVariant>(
-      `SELECT * FROM product_variants 
+      `${variantsWithStockedTotal}
        WHERE product_id IN (${placeholders}) AND status = 'ACTIVE'
        ORDER BY created_at ASC;`,
       productIds
@@ -142,6 +147,7 @@ export class ProductsRepository {
         variants: pVariants,
         images: pImages,
         total_stock: totalStock,
+        total_stocked: pVariants.reduce((sum, v) => sum + (v.total_stocked ?? v.stock_quantity), 0),
         primary_price_minor: primaryPriceMinor,
         has_multiple_variants: hasMultipleVariants,
       });
@@ -163,7 +169,7 @@ export class ProductsRepository {
     if (!product) return null;
 
     const variants = await db.getAllAsync<ProductVariant>(
-      "SELECT * FROM product_variants WHERE product_id = ? AND status = 'ACTIVE' ORDER BY created_at ASC;",
+      `${variantsWithStockedTotal} WHERE product_id = ? AND status = 'ACTIVE' ORDER BY created_at ASC;`,
       [id]
     );
 
@@ -186,6 +192,7 @@ export class ProductsRepository {
       variants,
       images,
       total_stock: totalStock,
+      total_stocked: variants.reduce((sum, v) => sum + (v.total_stocked ?? v.stock_quantity), 0),
       primary_price_minor: primaryPriceMinor,
       has_multiple_variants: variants.length > 1,
     };
@@ -209,7 +216,7 @@ export class ProductsRepository {
     if (!variant) return null;
     const product = await this.getByIdWithDetails(variant.product_id);
     if (!product) return null;
-    return { product, variant };
+    return { product, variant: product.variants.find(item => item.id === variant.id) ?? variant };
   }
 
   async create(input: CreateProductInput): Promise<ProductWithDetails> {
@@ -318,6 +325,7 @@ export class ProductsRepository {
       }
       await openingBatch(db, defaultVariant.id, openingStock, expirationDate, now);
       defaultVariant.stock_quantity = openingStock;
+      defaultVariant.total_stocked = openingStock;
     });
 
     return {
@@ -325,6 +333,7 @@ export class ProductsRepository {
       variants: [defaultVariant],
       images: createdImages,
       total_stock: defaultVariant.stock_quantity,
+      total_stocked: defaultVariant.stock_quantity,
       primary_price_minor: defaultVariant.price_minor,
       has_multiple_variants: false,
     };
@@ -362,7 +371,22 @@ export class ProductsRepository {
     }
 
     params.push(id);
-    await withInventoryTransaction(db, async () => { await db.runAsync(`UPDATE products SET ${updates.join(', ')} WHERE id = ?;`, params); });
+    await withInventoryTransaction(db, async () => {
+      await db.runAsync(`UPDATE products SET ${updates.join(', ')} WHERE id = ?;`, params);
+      if (input.primary_image !== undefined) {
+        const existing = await db.getFirstAsync<ProductImage>(
+          'SELECT * FROM product_images WHERE product_id = ? ORDER BY sort_order ASC, created_at ASC LIMIT 1;', [id]);
+        if (input.primary_image === null) {
+          if (existing) await db.runAsync('DELETE FROM product_images WHERE id = ? AND product_id = ?;', [existing.id, id]);
+        } else if (existing) {
+          await db.runAsync('UPDATE product_images SET relative_path = ?, frame_json = ? WHERE id = ? AND product_id = ?;',
+            [input.primary_image.relative_path, input.primary_image.frame_json, existing.id, id]);
+        } else {
+          await db.runAsync('INSERT INTO product_images (id, product_id, relative_path, sort_order, created_at, frame_json) VALUES (?, ?, ?, ?, ?, ?);',
+            [Crypto.randomUUID(), id, input.primary_image.relative_path, 0, now, input.primary_image.frame_json]);
+        }
+      }
+    });
   }
 
   async addVariant(
@@ -429,6 +453,7 @@ export class ProductsRepository {
 
       await openingBatch(db, variant.id, variantData.initial_stock ?? 0, expirationDate, now);
       variant.stock_quantity = variantData.initial_stock ?? 0;
+      variant.total_stocked = variant.stock_quantity;
 
       return variant;
     });

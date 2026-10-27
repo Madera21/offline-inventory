@@ -1,5 +1,7 @@
+import { KeyboardModal as Modal } from './KeyboardModal';
+import { KeyboardAwareScrollView as ScrollView } from './KeyboardAwareScrollView';
 import React, { useState } from 'react';
-import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Text, TouchableOpacity, View } from 'react-native';
 import { ProductVariant } from '../types';
 import { useTheme } from '../theme/ThemeProvider';
 import { productsRepository } from '../db/repositories/products.repository';

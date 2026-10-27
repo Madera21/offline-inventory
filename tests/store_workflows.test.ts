@@ -36,6 +36,43 @@ function cart(p: Awaited<ReturnType<typeof product>>, quantity = 1) {
 async function balance(id: string) { return (await db.getFirstAsync('SELECT stock_quantity FROM product_variants WHERE id = ?;', [id])).stock_quantity; }
 async function batchTotal(id: string) { return (await db.getFirstAsync('SELECT COALESCE(SUM(quantity),0) AS total FROM stock_batches WHERE variant_id = ?;', [id])).total; }
 
+test('stock fractions retain the stocked total through sales, voids, damage, returns, and deliveries', async () => {
+  const p = await product();
+  const variantId = p.variants[0].id;
+  const read = () => productsRepository.getByIdWithDetails(p.id);
+  expect(await read()).toMatchObject({ total_stock: 10, total_stocked: 10 });
+  const sale = await salesService.commitSale({ items: [cart(p)], discountMinor: 0, paymentMethod: 'CASH' });
+  expect(await read()).toMatchObject({ total_stock: 9, total_stocked: 10 });
+  expect((await productsRepository.getAllWithDetails())[0].variants[0]).toMatchObject({ stock_quantity: 9, total_stocked: 10 });
+  await salesService.voidSale(sale.id, 'Sample cancelled');
+  expect(await read()).toMatchObject({ total_stock: 10, total_stocked: 10 });
+  await stockRepository.recordMovement({ variantId, movementType: 'DAMAGE', quantityDelta: -2, reason: 'Broken' });
+  await stockRepository.recordMovement({ variantId, movementType: 'CUSTOMER_RETURN', quantityDelta: 1, reason: 'Returned' });
+  expect(await read()).toMatchObject({ total_stock: 9, total_stocked: 10 });
+  await storeRepository.receive('Supplier', [{ variantId, quantity: 5, unitCostMinor: 500, expirationDate: null }]);
+  expect(await read()).toMatchObject({ total_stock: 14, total_stocked: 15 });
+});
+
+test('saved products can replace, frame, remove, and add photos without changing stock', async () => {
+  const p = await productsRepository.create({ name: 'Milk', price_minor: 1000, opening_stock: 10, image_relative_paths: ['images/old.jpg'] });
+  const imageId = p.images[0].id;
+  await productsRepository.update(p.id, { name: 'Fresh milk', primary_image: { relative_path: 'images/new.jpg', frame_json: '{"zoom":2,"x":0,"y":0}' } });
+  const edited = await productsRepository.getByIdWithDetails(p.id);
+  expect(edited).toMatchObject({ name: 'Fresh milk', total_stock: 10, images: [{ id: imageId, relative_path: 'images/new.jpg', frame_json: '{"zoom":2,"x":0,"y":0}' }] });
+  await productsRepository.update(p.id, { primary_image: null });
+  expect((await productsRepository.getByIdWithDetails(p.id))!.images).toEqual([]);
+  await productsRepository.update(p.id, { primary_image: { relative_path: 'images/added.jpg', frame_json: null } });
+  expect((await productsRepository.getByIdWithDetails(p.id))!.images[0].relative_path).toBe('images/added.jpg');
+  expect(await balance(p.variants[0].id)).toBe(10);
+});
+
+test('photo write failures roll back product information and preserve the original image', async () => {
+  const p = await productsRepository.create({ name: 'Milk', price_minor: 1000, image_relative_paths: ['images/old.jpg'] });
+  await db.execAsync("CREATE TRIGGER reject_photo BEFORE UPDATE OF relative_path ON product_images BEGIN SELECT RAISE(ABORT, 'Photo write failed'); END;");
+  await expect(productsRepository.update(p.id, { name: 'Changed', primary_image: { relative_path: 'images/new.jpg', frame_json: null } })).rejects.toThrow('Photo write failed');
+  expect(await productsRepository.getByIdWithDetails(p.id)).toMatchObject({ name: 'Milk', images: [{ relative_path: 'images/old.jpg' }] });
+});
+
 test('upgrades V4 records and reruns without losing stock, images, sales, settings, or history', async () => {
   db.close(); db = new TestSqlite(); (getDatabase as jest.Mock).mockResolvedValue(db);
   await db.execAsync(MIGRATION_V1 + MIGRATION_V2 + MIGRATION_V3 + MIGRATION_V4);

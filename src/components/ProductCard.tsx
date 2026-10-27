@@ -67,6 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) =>
         <View style={styles.footerRow}>
           <StockBadge
             quantity={product.total_stock}
+            totalStocked={product.total_stocked}
             lowStockThreshold={primaryVariant?.low_stock_threshold}
             unitLabel={primaryVariant?.unit_label ?? 'units'}
           />

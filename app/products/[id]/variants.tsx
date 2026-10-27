@@ -1,3 +1,5 @@
+import { KeyboardModal as Modal } from '../../../src/components/KeyboardModal';
+import { KeyboardAwareScrollView as ScrollView } from '../../../src/components/KeyboardAwareScrollView';
 import { ThemeColors, useThemeStyles } from '../../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../../src/components/ExpirationDateField';
 import { ExpirationBadge } from '../../../src/components/ExpirationBadge';
@@ -6,19 +8,7 @@ import { VariantSettings } from '../../../src/components/VariantSettings';
 import { StoreButton } from '../../../src/components/StoreForm';
 import { storeRepository } from '../../../src/db/repositories/store.repository';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  Alert,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../../src/db/repositories/products.repository';
@@ -165,6 +155,7 @@ export default function VariantsScreen() {
             <View style={styles.badgeRow}>
               <StockBadge
                 quantity={item.stock_quantity}
+                totalStocked={item.total_stocked}
                 lowStockThreshold={item.low_stock_threshold}
                 unitLabel={item.unit_label}
               />

@@ -1,16 +1,8 @@
+import { KeyboardModal as Modal } from '../../src/components/KeyboardModal';
+import { KeyboardAwareScrollView as ScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { salesService, SaleWithDetails } from '../../src/services/sales.service';
@@ -163,7 +155,7 @@ export default function SaleReceiptScreen() {
       {/* Void Reason Modal */}
       <Modal visible={voidModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <ScrollView style={[styles.modalCard, { flexGrow: 0, maxHeight: '100%' }]}>
             <Text style={styles.modalTitle}>Void Transaction</Text>
             <Text style={styles.modalSubtitle}>
               Voiding this sale will reverse all items back into active inventory.
@@ -200,7 +192,7 @@ export default function SaleReceiptScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>

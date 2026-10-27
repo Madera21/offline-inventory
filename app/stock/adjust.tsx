@@ -1,16 +1,8 @@
+import { KeyboardAwareScrollView as ScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { useLabels } from '../../src/store/PreferencesProvider';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
@@ -276,6 +268,7 @@ export default function StockAdjustScreen() {
             </Text>
             <StockBadge
               quantity={selectedVariant.stock_quantity}
+              totalStocked={selectedVariant.total_stocked}
               lowStockThreshold={selectedVariant.low_stock_threshold}
               unitLabel={selectedVariant.unit_label}
             />

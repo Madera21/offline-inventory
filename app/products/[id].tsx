@@ -1,3 +1,5 @@
+import { KeyboardModal as Modal } from '../../src/components/KeyboardModal';
+import { KeyboardAwareScrollView as ScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../src/components/ExpirationDateField';
 import { ExpirationBadge } from '../../src/components/ExpirationBadge';
@@ -6,18 +8,7 @@ import { VariantSettings } from '../../src/components/VariantSettings';
 import { StoreButton } from '../../src/components/StoreForm';
 import { storeRepository } from '../../src/db/repositories/store.repository';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
@@ -212,6 +203,10 @@ export default function ProductDetailsScreen() {
     >
       {/* Product Hero */}
       <View style={styles.heroCard}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={imageUri ? 'Replace product photo' : 'Add product photo'}
+          onPress={() => router.push(`/products/${product.id}/edit`)} style={{ padding: 14, backgroundColor: colors.accentSoft }}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>{imageUri ? 'Replace photo' : 'Add photo'}</Text>
+        </TouchableOpacity>
         {imageUri ? (
           <View>
             <FramedProductImage uri={imageUri} frame={readImageFrame(product.images[0]?.frame_json)} style={styles.heroImage} />
@@ -250,6 +245,7 @@ export default function ProductDetailsScreen() {
             <MoneyText amountMinor={product.primary_price_minor} style={styles.heroPrice} />
             <StockBadge
               quantity={product.total_stock}
+              totalStocked={product.total_stocked}
               lowStockThreshold={primaryVariant?.low_stock_threshold}
               unitLabel={primaryVariant?.unit_label ?? 'units'}
             />
@@ -336,7 +332,7 @@ export default function ProductDetailsScreen() {
             }} />
           <View style={styles.variantMeta}>
             <Text style={styles.variantMetaText}>
-              Stock: {v.stock_quantity} {v.unit_label}
+              Stock: {v.stock_quantity}/{v.total_stocked ?? v.stock_quantity} {v.unit_label} remaining
             </Text>
             {v.cost_minor !== null && (
               <Text style={styles.variantMetaText}>
@@ -384,7 +380,7 @@ export default function ProductDetailsScreen() {
       {/* Adjust Stock Modal */}
       <Modal visible={adjustModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <ScrollView style={[styles.modalContent, { flexGrow: 0, maxHeight: '100%' }]}>
             <Text style={styles.modalTitle}>
               Adjust Stock: {selectedVariant?.label}
             </Text>
@@ -443,7 +439,7 @@ export default function ProductDetailsScreen() {
                 <Text style={styles.modalConfirmText}>Save Movement</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 

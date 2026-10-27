@@ -1,16 +1,8 @@
+import { KeyboardModal as Modal } from '../../src/components/KeyboardModal';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Modal,
-  Alert,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, RefreshControl } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { categoriesRepository } from '../../src/db/repositories/categories.repository';
@@ -190,7 +182,7 @@ export default function CategoriesScreen() {
       {/* Add / Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <KeyboardAwareScrollView style={[styles.modalContent, { flexGrow: 0, maxHeight: '100%' }]}>
             <Text style={styles.modalTitle}>
               {editingCategory ? 'Edit Category' : 'Create Category'}
             </Text>
@@ -213,7 +205,7 @@ export default function CategoriesScreen() {
                 <Text style={styles.confirmButtonText}>Save</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </KeyboardAwareScrollView>
         </View>
       </Modal>
     </View>

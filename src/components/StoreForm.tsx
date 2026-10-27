@@ -2,12 +2,13 @@ import { useLabels } from '../store/PreferencesProvider';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 export function StorePage({ title, children }: { title: string; children: React.ReactNode }) {
   const { colors } = useTheme();
-  return <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, backgroundColor: colors.paper }} contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 14 }}>
+  return <KeyboardAwareScrollView style={{ flex: 1, backgroundColor: colors.paper }} contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 14 }}>
     <Text style={{ color: colors.ink, fontFamily: 'serif', fontSize: 28 }}>{title}</Text>{children}
-  </ScrollView>;
+  </KeyboardAwareScrollView>;
 }
 export function StoreCard({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme();

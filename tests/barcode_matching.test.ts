@@ -23,9 +23,10 @@ describe('Barcode representation matching', () => {
     const db = { getFirstAsync: jest.fn().mockResolvedValue({ id: 'variant', product_id: 'product' }) };
     (getDatabase as jest.Mock).mockResolvedValue(db);
     const repository = new ProductsRepository();
-    jest.spyOn(repository, 'getByIdWithDetails').mockResolvedValue({ id: 'product' } as any);
+    jest.spyOn(repository, 'getByIdWithDetails').mockResolvedValue({ id: 'product', variants: [{ id: 'variant', stock_quantity: 9, total_stocked: 10 }] } as any);
     const match = await repository.findByBarcodeOrSku(' 036000291452 ');
     expect(match?.variant.id).toBe('variant');
+    expect(match?.variant.total_stocked).toBe(10);
     const [query, params] = db.getFirstAsync.mock.calls[0];
     expect(query).toContain("AND v.status = 'ACTIVE' AND p.status = 'ACTIVE'");
     expect(query).toContain('OR TRIM(v.sku) = ?');

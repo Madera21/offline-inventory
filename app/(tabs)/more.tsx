@@ -65,7 +65,7 @@ export default function MoreScreen() {
           </View>
           <View style={styles.menuContent}>
             <Text style={styles.menuTitle}>How to Use</Text>
-            <Text style={styles.menuSubtitle}>Add products, sell, manage stock, and save backups</Text>
+            <Text style={styles.menuSubtitle}>Interactive lessons · Practice with sample products</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </TouchableOpacity>
