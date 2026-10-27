@@ -1,16 +1,6 @@
+import { KeyboardModal as Modal } from './KeyboardModal';
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  SafeAreaView,
-  TextInput,
-  StatusBar,
-  Animated,
-  Vibration,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, StatusBar, Animated, Vibration } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 

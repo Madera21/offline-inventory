@@ -1,3 +1,5 @@
+import { KeyboardModal as Modal } from '../../src/components/KeyboardModal';
+import { KeyboardAwareScrollView as ScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { parseStoreAmount } from '../../src/utils/quantities';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { storeRepository, CustomerBalance } from '../../src/db/repositories/store.repository';
@@ -5,18 +7,7 @@ import { StoreButton, StoreText } from '../../src/components/StoreForm';
 import { ExpirationBadge } from '../../src/components/ExpirationBadge';
 import { useLabels } from '../../src/store/PreferencesProvider';
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { productsRepository } from '../../src/db/repositories/products.repository';
@@ -312,6 +303,7 @@ export default function QuickSaleScreen() {
                 <View style={styles.stockRow}>
                   <StockBadge
                     quantity={item.total_stock}
+                    totalStocked={item.total_stocked}
                     lowStockThreshold={item.variants[0]?.low_stock_threshold}
                     unitLabel={item.variants[0]?.unit_label ?? 'units'}
                   />
@@ -362,7 +354,7 @@ export default function QuickSaleScreen() {
                     <Text style={styles.variantLabelText}>{v.label}</Text>
                     <ExpirationBadge date={v.expiration_date} />
                     <Text style={styles.variantStockText}>
-                      Stock: {v.stock_quantity} {v.unit_label}
+                      Stock: {v.stock_quantity}/{v.total_stocked ?? v.stock_quantity} {v.unit_label} remaining
                     </Text>
                   </View>
                   <MoneyText amountMinor={v.price_minor} style={styles.variantPriceText} />
@@ -397,7 +389,7 @@ export default function QuickSaleScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.cartItemsScroll}>
+            <View style={styles.cartItemsScroll}>
               {cart.items.map((item) => (
                 <View key={item.variant_id} style={styles.cartItemRow}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -446,7 +438,7 @@ export default function QuickSaleScreen() {
                   </View>
                 </View>
               ))}
-            </ScrollView>
+            </View>
 
             {/* Payment & Totals */}
             <View style={styles.checkoutFooter}>
@@ -853,7 +845,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cartItemsScroll: {
     paddingHorizontal: 20,
-    maxHeight: 220,
   },
   cartItemRow: {
     flexDirection: 'column',

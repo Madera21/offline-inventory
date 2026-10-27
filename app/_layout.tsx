@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator, Text, StyleSheet, StatusBar } from 'react-native';
 import { getDatabase } from '../src/db/database';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 export default function RootLayout() {
   const [isDbReady, setIsDbReady] = useState(false);
@@ -40,7 +41,7 @@ export default function RootLayout() {
     );
   }
 
-  return <ThemeProvider><PreferencesProvider><AppNavigator /></PreferencesProvider></ThemeProvider>;
+  return <KeyboardProvider><ThemeProvider><PreferencesProvider><AppNavigator /></PreferencesProvider></ThemeProvider></KeyboardProvider>;
 }
 
 function AppNavigator() {

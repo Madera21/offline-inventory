@@ -1,17 +1,9 @@
+import { KeyboardAwareScrollView as ScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
 import { ExpirationDateField } from '../../src/components/ExpirationDateField';
 import { useLabels } from '../../src/store/PreferencesProvider';
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { categoriesRepository } from '../../src/db/repositories/categories.repository';

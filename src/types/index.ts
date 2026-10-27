@@ -53,6 +53,8 @@ export interface ProductVariant {
   favorite?: number;
   expiration_date?: string | null;
   stock_quantity: number;
+  /** Opening stock, deliveries, and positive count corrections; derived from the ledger. */
+  total_stocked?: number;
   status: EntityStatus;
   created_at: string;
   updated_at: string;
@@ -125,6 +127,7 @@ export interface ProductWithDetails extends Product {
   variants: ProductVariant[];
   images: ProductImage[];
   total_stock: number;
+  total_stocked?: number;
   primary_price_minor: number;
   has_multiple_variants: boolean;
 }
@@ -148,6 +151,7 @@ export interface CreateProductInput {
 }
 
 export interface UpdateProductInput {
+  primary_image?: { relative_path: string; frame_json: string | null } | null;
   name?: string;
   description?: string | null;
   category_id?: string | null;

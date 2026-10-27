@@ -1,6 +1,7 @@
+import { KeyboardModal as Modal } from './KeyboardModal';
 import { parseStoreAmount } from '../utils/quantities';
 import React, { useState } from 'react';
-import { Modal, View } from 'react-native';
+import { View } from 'react-native';
 import { ProductVariant } from '../types';
 import { storeRepository } from '../db/repositories/store.repository';
 import { minorToDecimalString, parseMoneyToMinor } from '../utils/currency';
