@@ -8,6 +8,7 @@ import { getCurrentIsoTimestamp } from '../utils/dates';
 import { DeviceEventEmitter } from 'react-native';
 import { cartStore } from '../store/cart.store';
 import { ensureImagesDirectoryExists } from './image.service';
+import { appVersion } from '../utils/appVersion';
 
 
 const EXTRA_TABLES = {
@@ -102,7 +103,7 @@ export class BackupService {
 
     const manifest: BackupManifest = {
       format_version: 1,
-      app_version: '1.0.0',
+      app_version: appVersion,
       schema_version: CURRENT_SCHEMA_VERSION,
       created_at: now,
       record_counts: {
