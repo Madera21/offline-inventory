@@ -195,8 +195,12 @@ export class ReportsRepository {
   /**
    * Generates CSV format string for sales history.
    */
-  async generateSalesCsv(): Promise<string> {
+  async generateSalesCsv(startDateIso?: string, endDateIso?: string): Promise<string> {
     const db = await getDatabase();
+    const conditions: string[] = [];
+    const params: string[] = [];
+    if (startDateIso) { conditions.push('sold_at >= ?'); params.push(startDateIso); }
+    if (endDateIso) { conditions.push('sold_at <= ?'); params.push(endDateIso); }
     const rows = await db.getAllAsync<{
       receipt_number: string;
       sold_at: string;
@@ -205,7 +209,7 @@ export class ReportsRepository {
       total_minor: number;
       payment_method: string;
       status: string;
-    }>('SELECT * FROM sales ORDER BY sold_at DESC;');
+    }>(`SELECT * FROM sales${conditions.length ? ` WHERE ${conditions.join(' AND ')}` : ''} ORDER BY sold_at DESC;`, params);
 
     const headers = 'Receipt,Date,Subtotal,Discount,Total,PaymentMethod,Status\n';
     const lines = rows.map((r) => {

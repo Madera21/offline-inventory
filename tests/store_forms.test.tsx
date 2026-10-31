@@ -25,8 +25,11 @@ import { reportsRepository } from '../src/db/repositories/reports.repository';
 import { backupService } from '../src/services/backup.service';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { ReportCalendar } from '../src/components/ReportCalendar';
+import { localDateKey, getDayStartAndEndIso } from '../src/utils/dates';
 
 const { act, create } = require('react-test-renderer');
+jest.setTimeout(30000);
 let tree: any;
 let alert: jest.SpyInstance;
 async function render(Component: any) { await act(async () => { tree = create(<Component />); }); }
@@ -87,6 +90,27 @@ test('daily closing saves counts in minor units and records stock purchases sepa
   expect(storeRepository.setSetting).toHaveBeenCalledWith(expect.stringContaining('counted:'), '15500');
   await press('Type: OPERATING · Tap to change'); await field('Expense description', 'Bought stock'); await field('Amount (₱)', '20'); await press('Save expense');
   expect(storeRepository.expense).toHaveBeenCalledWith('Bought stock', 2000, 'CASH', 'STOCK_PURCHASE');
+});
+
+test('previous daily closings load their saved counts and are read-only; Today restores editing', async () => {
+  const now = new Date();
+  const past = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const day = localDateKey(past);
+  (storeRepository.setting as jest.Mock).mockImplementation(async key => key === `opening:${day}` ? '5000' : key === `counted:${day}` ? '15500' : null);
+  await render(ClosingScreen);
+  await press('Choose closing day');
+  await act(async () => tree.root.findByType(ReportCalendar).props.onSelect(past));
+  const range = getDayStartAndEndIso(past);
+  expect(reportsRepository.getSalesReport).toHaveBeenLastCalledWith(range.start, range.end);
+  expect(storeRepository.setting).toHaveBeenCalledWith(`counted:${day}`);
+  expect(tree.root.findAllByType(TextInput)).toHaveLength(0);
+  expect(JSON.stringify(tree.toJSON())).toContain('₱155.00');
+  expect(storeRepository.setSetting).not.toHaveBeenCalled();
+  expect(storeRepository.expense).not.toHaveBeenCalled();
+  await press('Today');
+  expect(tree.root.findAllByType(TextInput).length).toBeGreaterThan(0);
+  await press('Today');
+  expect(tree.root.findAllByType(TextInput).length).toBeGreaterThan(0);
 });
 
 test('backup restore reads the selected external file and waits for explicit replacement confirmation', async () => {

@@ -1,5 +1,5 @@
 import { ThemeColors, useThemeStyles } from '../../src/theme/ThemeProvider';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,16 +21,26 @@ import {
   BestSellerItem,
 } from '../../src/db/repositories/reports.repository';
 import { MoneyText } from '../../src/components/MoneyText';
-import { getDayStartAndEndIso, getTodayStartAndEndIso } from '../../src/utils/dates';
 import { ReportCalendar } from '../../src/components/ReportCalendar';
+import { localDateKey } from '../../src/utils/dates';
+import { formatReportRange, getReportDateRange, ReportDateRange, ReportPeriod, reportPeriodLabels } from '../../src/utils/reportDates';
 
-type PeriodFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL' | 'DAY';
+type PeriodFilter = ReportPeriod;
 
 export default function ReportsScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const [period, setPeriod] = useState<PeriodFilter>('TODAY');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const [customVisible, setCustomVisible] = useState(false);
+  const [rangeStart, setRangeStart] = useState(() => new Date());
+  const [rangeEnd, setRangeEnd] = useState(() => new Date());
+  const [draftStart, setDraftStart] = useState(() => new Date());
+  const [draftEnd, setDraftEnd] = useState(() => new Date());
+  const [rangeField, setRangeField] = useState<'START' | 'END'>('START');
+  const [reportRange, setReportRange] = useState<ReportDateRange>({});
+  const [error, setError] = useState('');
+  const request = useRef(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -53,41 +63,29 @@ export default function ReportsScreen() {
 
   const [bestSellers, setBestSellers] = useState<BestSellerItem[]>([]);
 
-  const getDateRange = (filter: PeriodFilter) => {
-    const now = new Date();
-    if (filter === 'DAY') return getDayStartAndEndIso(selectedDate);
-    if (filter === 'TODAY') {
-      const { start } = getTodayStartAndEndIso();
-      return { start, end: now.toISOString() };
-    }
-    if (filter === 'WEEK') {
-      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return { start: past.toISOString(), end: now.toISOString() };
-    }
-    if (filter === 'MONTH') {
-      const past = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: past.toISOString(), end: now.toISOString() };
-    }
-    return { start: undefined, end: undefined };
-  };
-
   const loadReportData = useCallback(async () => {
+    const current = ++request.current;
+    setLoading(true);
     try {
-      const range = getDateRange(period);
+      const range = getReportDateRange(period, selectedDate, rangeStart, rangeEnd);
       const [sales, val, sellers] = await Promise.all([
         reportsRepository.getSalesReport(range.start, range.end),
         reportsRepository.getInventoryValuation(),
         reportsRepository.getBestSellers(5, range.start, false, range.end),
       ]);
+      if (current !== request.current) return;
+      setReportRange(range); setError('');
       setSalesMetrics(sales);
       setValuation(val);
       setBestSellers(sellers);
     } catch (err) {
+      if (current !== request.current) return;
+      setError('Could not load this report. Pull down to retry.');
       console.error('Failed to load report data:', err);
     } finally {
-      setLoading(false);
+      if (current === request.current) setLoading(false);
     }
-  }, [period, selectedDate]);
+  }, [period, selectedDate, rangeStart, rangeEnd]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,8 +99,20 @@ export default function ReportsScreen() {
     setRefreshing(false);
   };
 
+  const exportSales = async (allTime = false) => {
+    try {
+      const range = allTime ? {} : reportRange;
+      const csv = await reportsRepository.generateSalesCsv(range.start, range.end);
+      const scope = range.start && range.end ? `${localDateKey(new Date(range.start))}_to_${localDateKey(new Date(range.end))}` : 'all_time';
+      const uri = `${FileSystem.documentDirectory}sales_report_${scope}_${Date.now()}.csv`;
+      await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: `Sales: ${formatReportRange(range)}` });
+      else Alert.alert('Exported', `Saved to ${uri}`);
+    } catch (err: any) { Alert.alert('Export Error', err?.message || 'Failed to export CSV.'); }
+  };
+
   const handleExportCsv = () => {
-    Alert.alert('Export CSV Report', 'Choose report to export', [
+    Alert.alert('Export CSV Report', `Sales period: ${formatReportRange(reportRange)}. Sales ledger includes completed and voided receipts. Products & stock shows current inventory.`, [
       {
         text: 'Products & Stock CSV',
         onPress: async () => {
@@ -124,22 +134,11 @@ export default function ReportsScreen() {
       },
       {
         text: 'Sales Ledger CSV',
-        onPress: async () => {
-          try {
-            const csv = await reportsRepository.generateSalesCsv();
-            const filename = `sales_report_${Date.now()}.csv`;
-            const uri = `${FileSystem.documentDirectory}${filename}`;
-            await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-
-            if (await Sharing.isAvailableAsync()) {
-              await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export Sales CSV' });
-            } else {
-              Alert.alert('Exported', `Saved to ${uri}`);
-            }
-          } catch (err: any) {
-            Alert.alert('Export Error', err?.message || 'Failed to export CSV.');
-          }
-        },
+        onPress: () => Alert.alert('Export Sales Ledger', formatReportRange(reportRange), [
+          { text: 'Export selected period', onPress: () => void exportSales() },
+          { text: 'Export all sales', onPress: () => void exportSales(true) },
+          { text: 'Cancel', style: 'cancel' },
+        ]),
       },
       { text: 'Cancel', style: 'cancel' },
     ]);
@@ -161,14 +160,14 @@ export default function ReportsScreen() {
     >
       {/* Date Filter Tabs */}
       <View style={styles.filterRow}>
-        {(['TODAY', 'WEEK', 'MONTH', 'ALL'] as PeriodFilter[]).map((f) => (
+        {(['TODAY', 'YESTERDAY', 'WEEK', 'THIRTY_DAYS', 'MONTH', 'ALL'] as PeriodFilter[]).map((f) => (
           <TouchableOpacity
             key={f}
             style={[styles.filterChip, period === f && styles.filterChipActive]}
-            onPress={() => { setPeriod(f); setCalendarVisible(false); }}
+            onPress={() => { setPeriod(f); setCalendarVisible(false); setCustomVisible(false); }}
           >
             <Text style={[styles.filterText, period === f && styles.filterTextActive]}>
-              {f === 'TODAY' ? 'Today' : f === 'WEEK' ? '7 Days' : f === 'MONTH' ? 'Month' : 'All Time'}
+              {reportPeriodLabels[f]}
             </Text>
           </TouchableOpacity>
         ))}
@@ -177,7 +176,7 @@ export default function ReportsScreen() {
       <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose report date"
         accessibilityState={{ expanded: calendarVisible }}
         style={[styles.dateButton, period === 'DAY' && styles.filterChipActive]}
-        onPress={() => setCalendarVisible(visible => !visible)}>
+        onPress={() => { setCalendarVisible(visible => !visible); setCustomVisible(false); }}>
         <Ionicons name="calendar-outline" size={20} color={period === 'DAY' ? colors.onAccent : colors.accent} />
         <Text style={[styles.filterText, period === 'DAY' && styles.filterTextActive]}>
           {period === 'DAY'
@@ -189,6 +188,32 @@ export default function ReportsScreen() {
       {calendarVisible && <ReportCalendar selectedDate={selectedDate} onSelect={date => {
         setSelectedDate(date); setPeriod('DAY'); setCalendarVisible(false);
       }} />}
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Custom date range" accessibilityState={{ expanded: customVisible }}
+        style={[styles.dateButton, period === 'CUSTOM' && styles.filterChipActive]}
+        onPress={() => { setCustomVisible(visible => !visible); setCalendarVisible(false); setDraftStart(rangeStart); setDraftEnd(rangeEnd); setRangeField('START'); }}>
+        <Text style={[styles.filterText, period === 'CUSTOM' && styles.filterTextActive]}>Custom range</Text>
+      </TouchableOpacity>
+      {customVisible && <View>
+        <View style={styles.filterRow}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose start date" style={styles.dateButton} onPress={() => setRangeField('START')}>
+            <Text style={styles.filterText}>From: {draftStart.toLocaleDateString()}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose end date" style={styles.dateButton} onPress={() => setRangeField('END')}>
+            <Text style={styles.filterText}>To: {draftEnd.toLocaleDateString()}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.sectionHeader}>Choose {rangeField === 'START' ? 'start' : 'end'} date</Text>
+        <ReportCalendar key={rangeField} selectedDate={rangeField === 'START' ? draftStart : draftEnd} onSelect={date => {
+          if (rangeField === 'START') { setDraftStart(date); setRangeField('END'); } else setDraftEnd(date);
+        }} />
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Apply date range" style={styles.dateButton} onPress={() => {
+          try {
+            getReportDateRange('CUSTOM', selectedDate, draftStart, draftEnd);
+            setRangeStart(draftStart); setRangeEnd(draftEnd); setPeriod('CUSTOM'); setCustomVisible(false);
+          } catch (err: any) { Alert.alert('Invalid date range', err.message); }
+        }}><Text style={styles.filterText}>Apply date range</Text></TouchableOpacity>
+      </View>}
+      <Text style={styles.sectionHeader}>{error || formatReportRange(reportRange)}</Text>
 
       {/* Sales Performance Grid */}
       <Text style={styles.sectionHeader}>Sales Performance</Text>
@@ -268,7 +293,7 @@ export default function ReportsScreen() {
       </View>
 
       {/* CSV Export Action Button */}
-      <TouchableOpacity style={styles.exportBtn} onPress={handleExportCsv} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.exportBtn} disabled={!!error} onPress={handleExportCsv} activeOpacity={0.85}>
         <Ionicons name="download-outline" size={20} color={colors.onAccent} />
         <Text style={styles.exportBtnText}>Export CSV Report</Text>
       </TouchableOpacity>
@@ -292,6 +317,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 16,
   },
@@ -301,7 +327,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 8, backgroundColor: colors.surface,
   },
   filterChip: {
-    flex: 1,
+    minWidth: '30%',
+    flexGrow: 1,
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: colors.surface,
