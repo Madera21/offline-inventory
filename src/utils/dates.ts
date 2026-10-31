@@ -30,9 +30,12 @@ export function formatDateTime(isoString: string): string {
 }
 
 export function getTodayStartAndEndIso(): { start: string; end: string } {
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  return getDayStartAndEndIso(new Date());
+}
+
+export function getDayStartAndEndIso(date: Date): { start: string; end: string } {
+  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
   return {
     start: startOfDay.toISOString(),
     end: endOfDay.toISOString(),

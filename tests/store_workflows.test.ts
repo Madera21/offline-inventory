@@ -16,6 +16,7 @@ import { salesService } from '../src/services/sales.service';
 import { backupService } from '../src/services/backup.service';
 import { matchesExpirationFilter } from '../src/utils/expiration';
 import { TestSqlite } from './helpers/sqlite';
+import { getDayStartAndEndIso } from '../src/utils/dates';
 
 jest.setTimeout(30000);
 let db: TestSqlite;
@@ -35,6 +36,20 @@ function cart(p: Awaited<ReturnType<typeof product>>, quantity = 1) {
 }
 async function balance(id: string) { return (await db.getFirstAsync('SELECT stock_quantity FROM product_variants WHERE id = ?;', [id])).stock_quantity; }
 async function batchTotal(id: string) { return (await db.getFirstAsync('SELECT COALESCE(SUM(quantity),0) AS total FROM stock_batches WHERE variant_id = ?;', [id])).total; }
+
+test('selected-day reports include both day boundaries and exclude adjacent days and voided sales', async () => {
+  const p = await product();
+  const range = getDayStartAndEndIso(new Date(2026, 9, 15));
+  const timestamps = [new Date(Date.parse(range.start) - 1).toISOString(), range.start, range.end,
+    new Date(Date.parse(range.end) + 1).toISOString(), range.start];
+  for (const [index, timestamp] of timestamps.entries()) {
+    const sale = await salesService.commitSale({ items: [cart(p)], discountMinor: 0, paymentMethod: 'CASH' });
+    await db.runAsync('UPDATE sales SET sold_at = ? WHERE id = ?;', [timestamp, sale.id]);
+    if (index === 4) await salesService.voidSale(sale.id, 'Cancelled');
+  }
+  expect(await reportsRepository.getSalesReport(range.start, range.end)).toMatchObject({ transactionCount: 2, unitsSold: 2, totalRevenueMinor: 2000 });
+  expect(await reportsRepository.getBestSellers(5, range.start, false, range.end)).toMatchObject([{ total_quantity: 2, total_revenue_minor: 2000 }]);
+});
 
 test('stock fractions retain the stocked total through sales, voids, damage, returns, and deliveries', async () => {
   const p = await product();
