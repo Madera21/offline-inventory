@@ -49,6 +49,12 @@ test('selected-day reports include both day boundaries and exclude adjacent days
   }
   expect(await reportsRepository.getSalesReport(range.start, range.end)).toMatchObject({ transactionCount: 2, unitsSold: 2, totalRevenueMinor: 2000 });
   expect(await reportsRepository.getBestSellers(5, range.start, false, range.end)).toMatchObject([{ total_quantity: 2, total_revenue_minor: 2000 }]);
+  const csv = await reportsRepository.generateSalesCsv(range.start, range.end);
+  expect(csv.trim().split('\n')).toHaveLength(4);
+  expect(csv.match(/"COMPLETED"/g)).toHaveLength(2);
+  expect(csv.match(/"VOIDED"/g)).toHaveLength(1);
+  expect((await reportsRepository.generateSalesCsv()).trim().split('\n')).toHaveLength(6);
+  expect((await reportsRepository.generateSalesCsv('2000-01-01T00:00:00.000Z', '2000-01-02T00:00:00.000Z')).trim().split('\n')).toHaveLength(1);
 });
 
 test('stock fractions retain the stocked total through sales, voids, damage, returns, and deliveries', async () => {
