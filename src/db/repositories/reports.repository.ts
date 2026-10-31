@@ -79,7 +79,7 @@ export class ReportsRepository {
     };
   }
 
-  async getBestSellers(limit = 5, startDateIso?: string, availableOnly = false): Promise<BestSellerItem[]> {
+  async getBestSellers(limit = 5, startDateIso?: string, availableOnly = false, endDateIso?: string): Promise<BestSellerItem[]> {
     const db = await getDatabase();
     let query = `
       SELECT 
@@ -103,6 +103,11 @@ export class ReportsRepository {
     if (startDateIso) {
       query += ' AND s.sold_at >= ?';
       params.push(startDateIso);
+    }
+
+    if (endDateIso) {
+      query += ' AND s.sold_at <= ?';
+      params.push(endDateIso);
     }
 
     query += `

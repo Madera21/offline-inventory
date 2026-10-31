@@ -21,13 +21,16 @@ import {
   BestSellerItem,
 } from '../../src/db/repositories/reports.repository';
 import { MoneyText } from '../../src/components/MoneyText';
-import { getTodayStartAndEndIso } from '../../src/utils/dates';
+import { getDayStartAndEndIso, getTodayStartAndEndIso } from '../../src/utils/dates';
+import { ReportCalendar } from '../../src/components/ReportCalendar';
 
-type PeriodFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL';
+type PeriodFilter = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL' | 'DAY';
 
 export default function ReportsScreen() {
   const { colors, styles } = useThemeStyles(createStyles);
   const [period, setPeriod] = useState<PeriodFilter>('TODAY');
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [calendarVisible, setCalendarVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,6 +55,7 @@ export default function ReportsScreen() {
 
   const getDateRange = (filter: PeriodFilter) => {
     const now = new Date();
+    if (filter === 'DAY') return getDayStartAndEndIso(selectedDate);
     if (filter === 'TODAY') {
       const { start } = getTodayStartAndEndIso();
       return { start, end: now.toISOString() };
@@ -73,7 +77,7 @@ export default function ReportsScreen() {
       const [sales, val, sellers] = await Promise.all([
         reportsRepository.getSalesReport(range.start, range.end),
         reportsRepository.getInventoryValuation(),
-        reportsRepository.getBestSellers(5, range.start),
+        reportsRepository.getBestSellers(5, range.start, false, range.end),
       ]);
       setSalesMetrics(sales);
       setValuation(val);
@@ -83,7 +87,7 @@ export default function ReportsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, selectedDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,7 +165,7 @@ export default function ReportsScreen() {
           <TouchableOpacity
             key={f}
             style={[styles.filterChip, period === f && styles.filterChipActive]}
-            onPress={() => setPeriod(f)}
+            onPress={() => { setPeriod(f); setCalendarVisible(false); }}
           >
             <Text style={[styles.filterText, period === f && styles.filterTextActive]}>
               {f === 'TODAY' ? 'Today' : f === 'WEEK' ? '7 Days' : f === 'MONTH' ? 'Month' : 'All Time'}
@@ -169,6 +173,22 @@ export default function ReportsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose report date"
+        accessibilityState={{ expanded: calendarVisible }}
+        style={[styles.dateButton, period === 'DAY' && styles.filterChipActive]}
+        onPress={() => setCalendarVisible(visible => !visible)}>
+        <Ionicons name="calendar-outline" size={20} color={period === 'DAY' ? colors.onAccent : colors.accent} />
+        <Text style={[styles.filterText, period === 'DAY' && styles.filterTextActive]}>
+          {period === 'DAY'
+            ? selectedDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'Choose a day'}
+        </Text>
+        <Ionicons name={calendarVisible ? 'chevron-up' : 'chevron-down'} size={18} color={period === 'DAY' ? colors.onAccent : colors.accent} />
+      </TouchableOpacity>
+      {calendarVisible && <ReportCalendar selectedDate={selectedDate} onSelect={date => {
+        setSelectedDate(date); setPeriod('DAY'); setCalendarVisible(false);
+      }} />}
 
       {/* Sales Performance Grid */}
       <Text style={styles.sectionHeader}>Sales Performance</Text>
@@ -201,7 +221,7 @@ export default function ReportsScreen() {
       </View>
 
       {/* Inventory Health & Valuation */}
-      <Text style={styles.sectionHeader}>Inventory Valuation</Text>
+      <Text style={styles.sectionHeader}>Inventory Valuation · Current Stock</Text>
       <View style={styles.valuationCard}>
         <View style={styles.valRow}>
           <Text style={styles.valLabel}>Estimated Retail Value</Text>
@@ -274,6 +294,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
+  },
+  dateButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.line,
+    borderRadius: 8, backgroundColor: colors.surface,
   },
   filterChip: {
     flex: 1,
